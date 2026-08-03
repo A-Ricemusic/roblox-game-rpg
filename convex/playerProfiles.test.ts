@@ -12,6 +12,11 @@ const inventoryProfile = {
 	claimedWorldPickupIds: [],
 	equipment: { schemaVersion: 1 as const, weapon: "hoplite_sword" },
 };
+const legacyCompatibleInventoryProfile = {
+	schemaVersion: 1 as const,
+	itemQuantities: {},
+	claimedWorldPickupIds: [],
+};
 const profile = { schemaVersion: 1 as const, questProfile, inventoryProfile };
 const authorization = "Bearer test-secret-that-is-at-least-thirty-two-characters-long";
 
@@ -32,7 +37,10 @@ describe("player profile transactions", () => {
 			leaseSeconds: 180,
 		});
 		expect(acquired.status).toBe("ok");
-		if (acquired.status === "ok") expect(acquired.migrationRequired).toBe(true);
+		if (acquired.status === "ok") {
+			expect(acquired.migrationRequired).toBe(true);
+			expect(acquired.profile.inventoryProfile).toEqual(legacyCompatibleInventoryProfile);
+		}
 
 		const competing = await t.mutation(internal.playerProfiles.acquire, {
 			profileKey: "player:1",
@@ -149,7 +157,85 @@ describe("player profile transactions", () => {
 		const documents = await t.run(async (ctx) => ctx.db.query("playerProfiles").collect());
 		expect(documents[0].revision).toBe(0);
 		expect(documents[0].questProfile).toEqual(questProfile);
-		expect(documents[0].inventoryProfile).toEqual(inventoryProfile);
+		expect(documents[0].inventoryProfile).toEqual(legacyCompatibleInventoryProfile);
+	});
+
+	it("round-trips explicit unequipped state through release and reacquire", async () => {
+		const t = convexTest({ schema, modules });
+		await t.mutation(internal.playerProfiles.acquire, {
+			profileKey: "player:unequipped",
+			sessionId: "session:a",
+			serverId: "server:a",
+			leaseSeconds: 180,
+		});
+		const unequippedProfile = {
+			...profile,
+			inventoryProfile: { ...inventoryProfile, equipment: { schemaVersion: 1 as const } },
+		};
+		expect(
+			await t.mutation(internal.playerProfiles.release, {
+				profileKey: "player:unequipped",
+				sessionId: "session:a",
+				operationId: "release:unequipped",
+				expectedRevision: 0,
+				profile: unequippedProfile,
+			}),
+		).toEqual({ status: "ok", revision: 1 });
+
+		const reacquired = await t.mutation(internal.playerProfiles.acquire, {
+			profileKey: "player:unequipped",
+			sessionId: "session:b",
+			serverId: "server:b",
+			leaseSeconds: 180,
+		});
+		expect(reacquired.status).toBe("ok");
+		if (reacquired.status === "ok") {
+			expect(reacquired.profile.inventoryProfile.equipment).toEqual({ schemaVersion: 1 });
+		}
+	});
+
+	it("round-trips a full legacy inventory without discarding an item", async () => {
+		const t = convexTest({ schema, modules });
+		const itemQuantities = Object.fromEntries(
+			Array.from({ length: 200 }, (_, index) => [`legacy_item_${index}`, 1]),
+		);
+		await t.mutation(internal.playerProfiles.acquire, {
+			profileKey: "player:full-inventory",
+			sessionId: "session:a",
+			serverId: "server:a",
+			leaseSeconds: 180,
+		});
+		const fullProfile = {
+			...profile,
+			inventoryProfile: {
+				schemaVersion: 1 as const,
+				itemQuantities,
+				claimedWorldPickupIds: [],
+				equipment: { schemaVersion: 1 as const },
+			},
+		};
+		expect(
+			await t.mutation(internal.playerProfiles.release, {
+				profileKey: "player:full-inventory",
+				sessionId: "session:a",
+				operationId: "release:full-inventory",
+				expectedRevision: 0,
+				profile: fullProfile,
+			}),
+		).toEqual({ status: "ok", revision: 1 });
+
+		const reacquired = await t.mutation(internal.playerProfiles.acquire, {
+			profileKey: "player:full-inventory",
+			sessionId: "session:b",
+			serverId: "server:b",
+			leaseSeconds: 180,
+		});
+		expect(reacquired.status).toBe("ok");
+		if (reacquired.status === "ok") {
+			expect(Object.keys(reacquired.profile.inventoryProfile.itemQuantities)).toHaveLength(200);
+			expect(reacquired.profile.inventoryProfile.itemQuantities).toEqual(itemQuantities);
+			expect(reacquired.profile.inventoryProfile.equipment).toEqual({ schemaVersion: 1 });
+		}
 	});
 
 	it("atomically persists and releases the owning session", async () => {

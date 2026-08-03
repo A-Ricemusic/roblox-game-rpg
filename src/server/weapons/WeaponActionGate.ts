@@ -6,7 +6,7 @@ import {
 } from "shared/weapons/LightCombo";
 
 interface PlayerActionState {
-	readonly combo: LightComboState;
+	readonly combo?: LightComboState;
 	readonly nextAllowedAt: number;
 }
 
@@ -29,6 +29,14 @@ export class WeaponActionGate {
 
 	public forget(playerId: number): void {
 		this.stateByPlayerId.delete(playerId);
+	}
+
+	/** Restarts combo sequencing without bypassing an attack already on cooldown. */
+	public resetCombo(playerId: number): void {
+		const previous = this.stateByPlayerId.get(playerId);
+		if (previous !== undefined) {
+			this.stateByPlayerId.set(playerId, { nextAllowedAt: previous.nextAllowedAt });
+		}
 	}
 
 	public clear(): void {

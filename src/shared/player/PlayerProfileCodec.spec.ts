@@ -6,13 +6,16 @@ import { MAX_QUEST_DEFINITIONS } from "shared/quests/QuestProfileLimits";
 import { decodePlayerProfile } from "./PlayerProfileCodec";
 
 describe("PlayerProfileCodec", () => {
-	it("migrates a legacy quest-only profile with an empty inventory", () => {
+	it("migrates a legacy quest-only profile with the equipped starter sword", () => {
 		const result = decodePlayerProfile(
 			{ schemaVersion: 1, activeQuests: {}, completedQuestIds: [] },
 			INVENTORY_ITEM_DEFINITIONS,
 		);
 		expect(result.ok).toBe(true);
-		if (result.ok) expect(result.profile.inventoryProfile.itemQuantities).toEqual({});
+		if (result.ok) {
+			expect(result.profile.inventoryProfile.itemQuantities).toEqual({ hoplite_sword: 1 });
+			expect(result.profile.inventoryProfile.equipment.weapon).toBe("hoplite_sword");
+		}
 	});
 
 	it("decodes aggregate profiles and rejects a malformed inventory domain", () => {

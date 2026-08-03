@@ -30,4 +30,12 @@ describe("WeaponActionGate", () => {
 		expect(gate.tryLightSwing(101, 30)).toBe(1);
 		expect(gate.tryLightSwing(101, 30 + LIGHT_COMBO_RESET_SECONDS + 0.01)).toBe(1);
 	});
+
+	it("resets combo sequencing without clearing an active attack cooldown", () => {
+		const gate = new WeaponActionGate();
+		expect(gate.tryLightSwing(101, 10)).toBe(1);
+		gate.resetCombo(101);
+		expect(gate.tryLightSwing(101, 10.1)).toBeUndefined();
+		expect(gate.tryLightSwing(101, 10 + LIGHT_COMBO_MINIMUM_INTERVALS[1])).toBe(1);
+	});
 });

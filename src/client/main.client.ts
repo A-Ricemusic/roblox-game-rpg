@@ -16,7 +16,7 @@ const inventoryHud = new InventoryHud(playerGui);
 const inventoryController = new InventoryClientController(inventoryHud);
 inventoryController.start();
 
-const weaponController = new WeaponClientController();
+const weaponController = new WeaponClientController(() => !inventoryHud.isOpen());
 weaponController.start();
 
 const animationLab = new AnimationLabController();

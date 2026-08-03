@@ -1,4 +1,5 @@
 import { InventoryItemDefinition, MAX_INVENTORY_ID_LENGTH, MAX_INVENTORY_STACK_QUANTITY } from "./InventoryTypes";
+import { HOPLITE_SWORD_ITEM_ID } from "shared/items/ItemIds";
 
 export interface InventoryDefinitionIssue {
 	readonly path: string;
@@ -56,6 +57,23 @@ export function validateInventoryDefinitions(
 				issues.push({ path: `${path}.canDrop`, message: "Equippable weapons cannot be dropped yet." });
 			}
 		}
+	}
+	const starterWeapon = definitions.find((definition) => definition.id === HOPLITE_SWORD_ITEM_ID);
+	if (starterWeapon === undefined) {
+		issues.push({
+			path: "items",
+			message: `Required starter weapon '${HOPLITE_SWORD_ITEM_ID}' is missing.`,
+		});
+	} else if (
+		starterWeapon.category !== "Weapon" ||
+		starterWeapon.equipSlot !== "Weapon" ||
+		starterWeapon.maxStack !== 1 ||
+		starterWeapon.canDrop
+	) {
+		issues.push({
+			path: `items.${HOPLITE_SWORD_ITEM_ID}`,
+			message: "Starter weapon must be a non-droppable, single-stack Weapon in the Weapon slot.",
+		});
 	}
 	return issues;
 }

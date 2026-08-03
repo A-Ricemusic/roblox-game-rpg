@@ -19,7 +19,9 @@ export class InventoryEquipmentCoordinator {
 		itemId: string | undefined,
 	): InventoryEquipmentResult | undefined {
 		const result = this.inventories.setEquippedWeapon(profileKey, itemId);
-		if (result?.ok) this.materializer.syncPlayerEquipment(player);
+		if (result?.ok && result.changed && !this.materializer.syncPlayerEquipment(player)) {
+			warn(`[InventoryEquipment] Weapon selection for '${profileKey}' is saved but still materializing.`);
+		}
 		return result;
 	}
 

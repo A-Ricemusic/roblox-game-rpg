@@ -18,10 +18,18 @@ starts.
 The repository contains the aggregate quest/inventory schema and HTTP actions. Deploy
 additive Convex schema changes before enabling the corresponding Roblox build against
 an environment. For weapon inventory, `inventoryProfile.equipment` remains optional
-at the Convex boundary so legacy documents and older live servers remain compatible.
+at the Convex boundary so legacy documents remain readable. That optional field does
+not make pre-weapon Roblox servers compatible with profiles already written by the
+new build.
 The server configuration carries the non-secret environment URLs and secret-name
 default. Never put the shared secret, a Convex deploy key, or a Convex admin key in
 source control or a Roblox client.
+
+For this weapon migration, deploy Convex first while it still synthesizes a
+legacy-compatible empty inventory, then drain or shut down all pre-weapon Roblox
+servers, and only then publish the Roblox build that writes `hoplite_sword` and
+`equipment`. Never run old and new Roblox builds concurrently once new profiles may
+be saved.
 
 ## One required Roblox configuration step
 

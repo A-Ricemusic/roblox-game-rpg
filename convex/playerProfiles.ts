@@ -26,9 +26,8 @@ function emptyQuestProfile() {
 function emptyInventoryProfile() {
 	return {
 		schemaVersion: 1 as const,
-		itemQuantities: { hoplite_sword: 1 },
+		itemQuantities: {},
 		claimedWorldPickupIds: [],
-		equipment: { schemaVersion: 1 as const, weapon: "hoplite_sword" },
 	};
 }
 

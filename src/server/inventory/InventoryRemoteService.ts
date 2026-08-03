@@ -9,7 +9,7 @@ import { buildInventorySnapshot } from "shared/inventory/InventoryViewModel";
 import { InventoryProfileService } from "./InventoryProfileService";
 
 const REQUEST_COOLDOWN_SECONDS = 0.25;
-const EQUIPMENT_COOLDOWN_SECONDS = 0.15;
+const EQUIPMENT_COOLDOWN_SECONDS = 0.5;
 
 export interface InventoryEquipmentRequestHandler {
 	setWeaponEquipped(

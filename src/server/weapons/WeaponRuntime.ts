@@ -76,7 +76,7 @@ export class WeaponRuntime {
 	}
 
 	public syncPlayerEquipment(player: Player, character: Model | undefined = player.Character): boolean {
-		this.actionGate.forget(player.UserId);
+		this.actionGate.resetCombo(player.UserId);
 		const generation = (this.materializationGenerationByPlayer.get(player) ?? 0) + 1;
 		this.materializationGenerationByPlayer.set(player, generation);
 		if (character === undefined || player.Character !== character) return false;

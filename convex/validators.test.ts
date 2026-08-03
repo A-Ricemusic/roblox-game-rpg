@@ -193,6 +193,14 @@ describe("inventory profile semantic validation", () => {
 				equipment: { schemaVersion: 1, weapon: "hoplite_sword" },
 			}),
 		).toThrow("not owned");
+		expect(() =>
+			assertValidInventoryProfile({
+				schemaVersion: 1,
+				itemQuantities: { marble_fragment: 1 },
+				claimedWorldPickupIds: [],
+				equipment: { schemaVersion: 1, weapon: "marble_fragment" },
+			}),
+		).toThrow("not a supported weapon");
 	});
 
 	it("accepts legacy missing equipment and explicit unequipped state", () => {

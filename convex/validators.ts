@@ -50,6 +50,7 @@ const MAX_INVENTORY_ITEM_TYPES = 200;
 const MAX_CLAIMED_WORLD_PICKUPS = 1_024;
 const MAX_INVENTORY_STACK_QUANTITY = 1_000_000;
 const STARTER_WEAPON_ID = "hoplite_sword";
+const SUPPORTED_WEAPON_IDS = new Set([STARTER_WEAPON_ID]);
 
 function assertPersistedId(
 	value: unknown,
@@ -159,6 +160,9 @@ export function assertValidInventoryProfile(profile: InventoryProfile): void {
 	}
 	if (profile.equipment?.weapon !== undefined) {
 		assertPersistedId(profile.equipment.weapon, "equipped weapon ID");
+		if (!SUPPORTED_WEAPON_IDS.has(profile.equipment.weapon)) {
+			throw new Error(`Equipped weapon '${profile.equipment.weapon}' is not a supported weapon.`);
+		}
 		if ((profile.itemQuantities[profile.equipment.weapon] ?? 0) < 1) {
 			throw new Error(`Equipped weapon '${profile.equipment.weapon}' is not owned.`);
 		}

@@ -30,6 +30,9 @@ describe("InventoryEquipmentCoordinator", () => {
 		expect(equipped?.ok).toBe(true);
 		expect(services.inventories.get("player:equipment")?.equipment.weapon).toBe("hoplite_sword");
 		expect(materializer.syncCalls).toBe(2);
+		const unchanged = coordinator.setWeaponEquipped(player, "player:equipment", "hoplite_sword");
+		expect(unchanged?.ok && unchanged.changed).toBe(false);
+		expect(materializer.syncCalls).toBe(2);
 		player.Destroy();
 	});
 

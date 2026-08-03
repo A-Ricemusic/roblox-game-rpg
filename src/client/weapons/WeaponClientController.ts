@@ -33,6 +33,8 @@ export class WeaponClientController {
 	private readonly predictedStepsByActionId = new Map<number, PendingPrediction>();
 	private started = false;
 
+	public constructor(private readonly canRequestAttack: () => boolean = () => true) {}
+
 	public start(): void {
 		if (this.started) {
 			return;
@@ -56,6 +58,7 @@ export class WeaponClientController {
 		ContextActionService.BindActionAtPriority(
 			LIGHT_SWING_ACTION,
 			(_actionName, inputState) => {
+				if (!this.canRequestAttack()) return Enum.ContextActionResult.Sink;
 				if (UserInputService.GetFocusedTextBox() !== undefined) {
 					return Enum.ContextActionResult.Pass;
 				}
@@ -90,6 +93,7 @@ export class WeaponClientController {
 	}
 
 	private requestLightSwing(): boolean {
+		if (!this.canRequestAttack()) return false;
 		const character = Players.LocalPlayer.Character;
 		const humanoid = character?.FindFirstChildOfClass("Humanoid");
 		const now = Workspace.GetServerTimeNow();

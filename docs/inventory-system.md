@@ -103,6 +103,9 @@ Add a stable definition to `InventoryDefinitions.ts`:
 IDs are persistence and cross-system contracts. Do not rename them to change display
 text. Weapon definitions must use the `Weapon` category and `Weapon` equipment slot;
 only server-validated owned weapon IDs may be selected.
+Adding another weapon also requires updating the Convex supported-weapon allowlist
+and implementing its physical materializer in the combat runtime before profiles may
+select it.
 
 ## Authoring a world pickup
 
@@ -141,6 +144,12 @@ The versioned object is intentionally never an empty Lua table: Roblox JSON enco
 an empty table as `[]`, which is not a Convex object. Unequipped state is therefore
 `{ schemaVersion: 1 }`, not `{}`.
 
+The GUI displays persistent desired state. Physical realization normally completes
+in the same request; incomplete R15 rigs receive bounded retries, and respawn
+reconciles again. Missing or malformed assets produce server warnings instead of
+silently changing the saved selection, so operators can repair content without
+discarding player intent.
+
 The current inventory supports 200 distinct item types and 1024 lifetime world
 pickup IDs. Each definition supplies its own maximum quantity. Grants are
 all-or-nothing: a pickup that would exceed a stack or profile limit is rejected and
@@ -158,17 +167,23 @@ profile. Autosave and disconnect then write both domains with one Convex lease,
 revision, and idempotency key.
 
 Existing quest-only Convex documents remain readable because `inventoryProfile` is
-additive and optional in the table schema. Acquisition supplies the starter inventory
-when the field is absent; the next save writes the aggregate shape. Inventory profiles
-from before weapon equipment are migrated additively with one equipped Hoplite Sword.
+additive and optional in the table schema. Convex acquisition deliberately supplies a
+legacy-compatible empty inventory when the field is absent. The new Roblox codec then
+migrates it in memory to one equipped Hoplite Sword, and the next save writes the new
+aggregate shape. Inventory profiles from before weapon equipment are migrated the same
+way.
 An explicit `{ schemaVersion: 1 }` remains unequipped and is never mistaken for a
 legacy profile. If a legacy inventory is already at the 200-item hard limit, it is
 kept intact and loaded unequipped rather than dropping an item or quarantining the
 player. Legacy Roblox quest DataStore migration creates the same starter inventory.
 
-Deploy the Convex schema that makes `equipment` optional before deploying the Roblox
-build that writes it. Keeping the field optional lets old documents and old game
-servers coexist during a rolling deployment.
+This change requires a staged production rollout. First deploy the additive Convex
+schema/functions; its synthesized empty inventory is still readable by the
+pre-weapon build. Then shut down or drain every pre-weapon Roblox server before
+publishing the build that can write `hoplite_sword` and `equipment`. The optional
+field keeps old documents readable, but it does not make old servers able to read
+new weapon IDs or preserve new equipment state. Do not allow old and new Roblox
+builds to serve players concurrently after weapon migration begins.
 
 If decoding or definition validation fails after acquisition, the server calls the
 authenticated abandon endpoint to release the session without overwriting data.

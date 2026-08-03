@@ -76,6 +76,27 @@ describe("PlayerProfileService", () => {
 		expect(services.repository.saveCalls).toBe(2);
 	});
 
+	it("marks equipment changes dirty and preserves explicit unequipped state after reconnect", () => {
+		const services = createTestPlayerServices();
+		expect(services.playerProfiles.load("player:equipment").ok).toBe(true);
+		expect(services.playerProfiles.save("player:equipment").ok).toBe(true);
+		expect(services.repository.saveCalls).toBe(1);
+
+		const unequipped = services.inventories.setEquippedWeapon("player:equipment", undefined);
+		expect(unequipped?.ok).toBe(true);
+		expect(services.playerProfiles.save("player:equipment").ok).toBe(true);
+		expect(services.repository.saveCalls).toBe(2);
+		const stored = services.repository.getStored("player:equipment") as {
+			readonly inventoryProfile: { readonly equipment: { readonly weapon?: string } };
+		};
+		expect(stored.inventoryProfile.equipment.weapon).toBeUndefined();
+		expect(services.playerProfiles.unload("player:equipment").ok).toBe(true);
+
+		const reconnected = createTestPlayerServices(services.repository);
+		expect(reconnected.playerProfiles.load("player:equipment").ok).toBe(true);
+		expect(reconnected.inventories.get("player:equipment")?.equipment.weapon).toBeUndefined();
+	});
+
 	it("keeps a profile dirty when gameplay changes during an in-flight save", () => {
 		const services = createTestPlayerServices();
 		expect(services.playerProfiles.load("player:concurrent").ok).toBe(true);

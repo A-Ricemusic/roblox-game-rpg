@@ -25,7 +25,8 @@ describe("Player and quest profile services", () => {
 		expect(services.playerProfiles.save("player:1").ok).toBe(true);
 		const stored = services.repository.getStored("player:1") as PlayerProfile;
 		expect(stored.questProfile).toBe(update?.profile);
-		expect(stored.inventoryProfile.itemQuantities).toEqual({});
+		expect(stored.inventoryProfile.itemQuantities).toEqual({ hoplite_sword: 1 });
+		expect(stored.inventoryProfile.equipment.weapon).toBe("hoplite_sword");
 	});
 
 	it("does not unload when the aggregate release ultimately fails", () => {
