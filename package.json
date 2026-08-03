@@ -11,6 +11,7 @@
 	"scripts": {
 		"build": "rbxtsc",
 		"build:place": "npm run build && rojo build default.project.json --output RobloxGame.rbxlx",
+		"animation-lab:capture": "zsh scripts/capture-animation-lab.sh",
 		"watch": "rbxtsc -w",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",

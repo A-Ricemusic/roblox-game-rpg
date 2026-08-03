@@ -18,6 +18,7 @@ interface ActiveSwing {
 	readonly startedAt: number;
 	readonly comboStep: LightComboStep;
 	readonly drivers: ReadonlyMap<SwordPoseJoint, JointPoseDriver>;
+	readonly previewElapsed?: number;
 }
 
 const JOINT_SPECS: ReadonlyArray<JointSpec> = [
@@ -180,6 +181,30 @@ export class ProceduralSwordAnimator {
 		return true;
 	}
 
+	public previewLightSwing(character: Model, comboStep: LightComboStep, elapsedSeconds: number): boolean {
+		if (this.destroyed) return false;
+
+		const drivers = resolvePoseDrivers(character);
+		if (!drivers.has("rightShoulder")) return false;
+
+		const existingSwing = this.activeSwings.get(character);
+		if (existingSwing !== undefined) resetSwing(existingSwing);
+		this.activeSwings.set(character, {
+			startedAt: 0,
+			comboStep,
+			drivers,
+			previewElapsed: math.clamp(elapsedSeconds, 0, getLightComboMotionDuration(comboStep)),
+		});
+		return true;
+	}
+
+	public clearCharacter(character: Model): void {
+		const swing = this.activeSwings.get(character);
+		if (swing === undefined) return;
+		resetSwing(swing);
+		this.activeSwings.delete(character);
+	}
+
 	public destroy(): void {
 		if (this.destroyed) return;
 		this.destroyed = true;
@@ -197,9 +222,12 @@ export class ProceduralSwordAnimator {
 				continue;
 			}
 
-			const elapsed = math.max(0, now - swing.startedAt);
+			const elapsed = swing.previewElapsed ?? math.max(0, now - swing.startedAt);
 			const pose = sampleLightComboMotion(swing.comboStep, elapsed);
-			if (pose === undefined || elapsed >= getLightComboMotionDuration(swing.comboStep)) {
+			if (
+				pose === undefined ||
+				(swing.previewElapsed === undefined && elapsed >= getLightComboMotionDuration(swing.comboStep))
+			) {
 				resetSwing(swing);
 				this.activeSwings.delete(character);
 				continue;

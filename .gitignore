@@ -19,5 +19,8 @@
 /game-output.log
 /jest-output.json
 
+# Temporary Animation Lab screenshots and frame captures
+/artifacts/animation-lab/
+
 .env.local
 /.convex/

@@ -108,10 +108,11 @@ save rather than creating independent polling loops. See
 
 ## Legacy Roblox DataStore migration
 
-`MigratePlayerDataStore` is `true` in `default.project.json`. The first Convex
-acquisition creates a document marked `pending`; while pending, the Roblox adapter
-reads `PlayerQuestProfiles_v1`. The decoded/migrated profile becomes authoritative
-only when a Convex save succeeds, which changes the marker to `complete`.
+`MigratePlayerDataStore` defaults to `true` on live servers and `false` in Studio.
+The first Convex acquisition creates a document marked `pending`; while pending, the
+Roblox adapter reads `PlayerQuestProfiles_v1`. The decoded/migrated profile becomes
+authoritative only when a Convex save succeeds, which changes the marker to
+`complete`.
 
 This design handles failed legacy reads safely: the marker remains pending and the
 next connection retries the import. Once production metrics confirm that every

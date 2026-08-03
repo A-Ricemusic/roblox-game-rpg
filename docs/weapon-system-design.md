@@ -620,6 +620,11 @@ input, validation, hit detection, damage, and replication—belongs to the codeb
 
 ## 18. Implemented first slice and lessons learned
 
+Procedural motion development now uses the development-only workflow documented in
+[`docs/animation-lab.md`](animation-lab.md). Future animation changes should be
+inspected there with deterministic poses and trajectory diagnostics before ordinary
+combat playtesting.
+
 The following behavior has been confirmed in Roblox Studio:
 
 - The server clones `ReplicatedStorage/Assets/Weapons/HopliteSword` when an R15
