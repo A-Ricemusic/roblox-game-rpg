@@ -28,5 +28,13 @@ describe("QuestRemoteProtocol", () => {
 		};
 		expect(parseQuestServerMessage(snapshot)).toEqual(snapshot);
 		expect(parseQuestServerMessage({ kind: "Snapshot", quests: [{ title: 123 }] })).toBeUndefined();
+		expect(
+			parseQuestServerMessage({
+				...snapshot,
+				quests: [
+					{ ...snapshot.quests[0], objectives: [{ ...snapshot.quests[0].objectives[0], progress: 0.5 }] },
+				],
+			}),
+		).toBeUndefined();
 	});
 });

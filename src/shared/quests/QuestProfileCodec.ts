@@ -95,7 +95,7 @@ function readActiveQuests(value: unknown, legacy: boolean): Record<string, Activ
 		}
 
 		const status = legacy && state.status === undefined ? "Active" : state.status;
-		if (status !== "Active" && status !== "Completed") {
+		if (status !== "Active") {
 			return undefined;
 		}
 
@@ -136,6 +136,11 @@ export function decodeQuestProfile(value: unknown): QuestProfileDecodeResult {
 	const completedQuestIds = readStringArray(record.completedQuestIds, true);
 	if (activeQuests === undefined || completedQuestIds === undefined) {
 		return { ok: false, error: "Quest profile contains invalid active quest or completion data." };
+	}
+	for (const completedQuestId of completedQuestIds) {
+		if (activeQuests[completedQuestId] !== undefined) {
+			return { ok: false, error: `Quest '${completedQuestId}' cannot be both active and completed.` };
+		}
 	}
 
 	return {

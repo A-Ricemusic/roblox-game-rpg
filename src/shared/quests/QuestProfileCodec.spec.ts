@@ -77,5 +77,12 @@ describe("QuestProfileCodec", () => {
 				completedQuestIds: ["olive_quest", "olive_quest"],
 			}).ok,
 		).toBe(false);
+		expect(
+			decodeQuestProfile({
+				schemaVersion: 1,
+				activeQuests: { olive_quest: activeQuest },
+				completedQuestIds: ["olive_quest"],
+			}).ok,
+		).toBe(false);
 	});
 });

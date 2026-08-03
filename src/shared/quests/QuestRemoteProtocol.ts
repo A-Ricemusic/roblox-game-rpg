@@ -3,6 +3,10 @@ import { QuestClientRequest, QuestClientView, QuestServerMessage } from "./Quest
 export const QUEST_REMOTES_FOLDER_NAME = "QuestRemotes";
 export const QUEST_REMOTE_EVENT_NAME = "QuestState";
 
+function isNonNegativeInteger(value: unknown): value is number {
+	return typeIs(value, "number") && value >= 0 && value < math.huge && math.floor(value) === value;
+}
+
 export function parseQuestClientRequest(value: unknown): QuestClientRequest | undefined {
 	if (!typeIs(value, "table")) {
 		return undefined;
@@ -18,9 +22,8 @@ function readObjective(value: unknown): QuestClientView["objectives"][number] | 
 	if (
 		!typeIs(objective.id, "string") ||
 		!typeIs(objective.description, "string") ||
-		!typeIs(objective.progress, "number") ||
-		!typeIs(objective.required, "number") ||
-		objective.progress < 0 ||
+		!isNonNegativeInteger(objective.progress) ||
+		!isNonNegativeInteger(objective.required) ||
 		objective.required < 1
 	) {
 		return undefined;
