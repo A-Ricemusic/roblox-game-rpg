@@ -15,3 +15,10 @@ rojo serve
 ```
 
 For more help, check out [the Rojo documentation](https://rojo.space/docs).
+
+## Design documents
+
+- [RPG combat system plan](docs/combat-system-plan.html)
+- [Weapon system design](docs/weapon-system-design.md)
+- [Quest system design](docs/quest-system-design.md)
+- [Roblox TypeScript (`roblox-ts`) guide](docs/roblox-typescript.md)
