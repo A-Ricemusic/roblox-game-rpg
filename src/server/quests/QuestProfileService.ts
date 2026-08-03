@@ -1,5 +1,6 @@
 import { applyCollectibleAcquired, startAutoQuests } from "shared/quests/QuestEngine";
 import { decodeQuestProfile } from "shared/quests/QuestProfileCodec";
+import { validateQuestProfileAgainstDefinitions } from "shared/quests/QuestProfileDefinitionValidator";
 import { CollectibleAcquiredEvent, QuestDefinition, QuestEngineResult, QuestProfile } from "shared/quests/QuestTypes";
 
 import { RepositoryResult } from "./persistence/QuestProfileRepository";
@@ -30,6 +31,10 @@ export class QuestProfileService {
 		const decoded = decodeQuestProfile(stored.value);
 		if (!decoded.ok) {
 			return decoded;
+		}
+		const definitionError = validateQuestProfileAgainstDefinitions(decoded.profile, this.definitions);
+		if (definitionError !== undefined) {
+			return { ok: false, error: definitionError };
 		}
 
 		const profile = startAutoQuests(decoded.profile, this.definitions, now);

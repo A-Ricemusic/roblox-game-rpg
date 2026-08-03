@@ -64,6 +64,28 @@ describe("QuestProfileService", () => {
 		expect(result.ok).toBe(false);
 	});
 
+	it("rejects incompatible active stages before they can reach the engine", () => {
+		const repository = new FakeQuestProfileRepository();
+		const definition = QUEST_DEFINITIONS[0];
+		repository.seed("player:invalid-stage", {
+			schemaVersion: 1,
+			activeQuests: {
+				[definition.id]: {
+					questId: definition.id,
+					definitionVersion: definition.version,
+					status: "Active",
+					currentStageIndex: 999,
+					objectiveProgress: {},
+					startedAt: 1,
+					updatedAt: 1,
+				},
+			},
+			completedQuestIds: [],
+		});
+
+		expect(createService(repository).load("player:invalid-stage").ok).toBe(false);
+	});
+
 	it("does not overwrite an already loaded profile with stale repository data", () => {
 		const repository = new FakeQuestProfileRepository();
 		const service = createService(repository);
