@@ -93,3 +93,8 @@ export type QuestClientView = Readonly<{
 		required: number;
 	}>;
 }>;
+
+export type QuestServerMessage = Readonly<{
+	kind: "Snapshot";
+	quests: ReadonlyArray<QuestClientView>;
+}>;

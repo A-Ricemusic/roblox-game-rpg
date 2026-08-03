@@ -20,7 +20,8 @@ export function validateQuestDefinitions(definitions: ReadonlyArray<QuestDefinit
 	const issues = new Array<QuestDefinitionIssue>();
 	const questIds = new Set<string>();
 
-	for (const [questIndex, quest] of definitions.entries()) {
+	for (let questIndex = 0; questIndex < definitions.size(); questIndex++) {
+		const quest = definitions[questIndex];
 		const questPath = `quests[${questIndex}]`;
 		validateId(quest.id, `${questPath}.id`, issues);
 
@@ -36,6 +37,9 @@ export function validateQuestDefinitions(definitions: ReadonlyArray<QuestDefinit
 		if (quest.title.size() === 0) {
 			issues.push({ path: `${questPath}.title`, message: "Title must not be empty." });
 		}
+		if (quest.summary.size() === 0) {
+			issues.push({ path: `${questPath}.summary`, message: "Summary must not be empty." });
+		}
 
 		if (quest.stages.size() === 0) {
 			issues.push({ path: `${questPath}.stages`, message: "A quest must contain at least one stage." });
@@ -44,7 +48,8 @@ export function validateQuestDefinitions(definitions: ReadonlyArray<QuestDefinit
 		const stageIds = new Set<string>();
 		const objectiveIds = new Set<string>();
 
-		for (const [stageIndex, stage] of quest.stages.entries()) {
+		for (let stageIndex = 0; stageIndex < quest.stages.size(); stageIndex++) {
+			const stage = quest.stages[stageIndex];
 			const stagePath = `${questPath}.stages[${stageIndex}]`;
 			validateId(stage.id, `${stagePath}.id`, issues);
 
@@ -52,12 +57,19 @@ export function validateQuestDefinitions(definitions: ReadonlyArray<QuestDefinit
 				issues.push({ path: `${stagePath}.id`, message: `Duplicate stage ID '${stage.id}'.` });
 			}
 			stageIds.add(stage.id);
-
-			if (stage.objectives.size() === 0) {
-				issues.push({ path: `${stagePath}.objectives`, message: "A stage must contain at least one objective." });
+			if (stage.title.size() === 0) {
+				issues.push({ path: `${stagePath}.title`, message: "Title must not be empty." });
 			}
 
-			for (const [objectiveIndex, objective] of stage.objectives.entries()) {
+			if (stage.objectives.size() === 0) {
+				issues.push({
+					path: `${stagePath}.objectives`,
+					message: "A stage must contain at least one objective.",
+				});
+			}
+
+			for (let objectiveIndex = 0; objectiveIndex < stage.objectives.size(); objectiveIndex++) {
+				const objective = stage.objectives[objectiveIndex];
 				const objectivePath = `${stagePath}.objectives[${objectiveIndex}]`;
 				validateId(objective.id, `${objectivePath}.id`, issues);
 
@@ -83,7 +95,10 @@ export function validateQuestDefinitions(definitions: ReadonlyArray<QuestDefinit
 						});
 					}
 					if (objective.allowedSources.size() === 0) {
-						issues.push({ path: `${objectivePath}.allowedSources`, message: "At least one source is required." });
+						issues.push({
+							path: `${objectivePath}.allowedSources`,
+							message: "At least one source is required.",
+						});
 					}
 				}
 			}

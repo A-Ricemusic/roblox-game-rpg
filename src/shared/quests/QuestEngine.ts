@@ -17,7 +17,10 @@ export function createEmptyQuestProfile(): QuestProfile {
 	};
 }
 
-function createObjectiveProgress(definition: QuestDefinition, stageIndex: number): Record<string, ObjectiveProgressState> {
+function createObjectiveProgress(
+	definition: QuestDefinition,
+	stageIndex: number,
+): Record<string, ObjectiveProgressState> {
 	const progress: Record<string, ObjectiveProgressState> = {};
 	for (const objective of definition.stages[stageIndex].objectives) {
 		progress[objective.id] = { progress: 0, processedSourceIds: [] };
@@ -119,24 +122,26 @@ function applyEventToQuest(
 	}
 
 	let nextState: ActiveQuestState = { ...state, objectiveProgress: nextProgress, updatedAt: now };
-	if (stageIsComplete(definition, nextState)) {
+	const stageCompleted = stageIsComplete(definition, nextState);
+	let questCompleted = false;
+	if (stageCompleted) {
 		const nextStageIndex = state.currentStageIndex + 1;
-		const questCompleted = nextStageIndex >= definition.stages.size();
+		questCompleted = nextStageIndex >= definition.stages.size();
 		nextState = questCompleted
 			? { ...nextState, status: "Completed" }
 			: {
 					...nextState,
 					currentStageIndex: nextStageIndex,
 					objectiveProgress: createObjectiveProgress(definition, nextStageIndex),
-			  };
-
-		for (const change of changes) {
-			(change as Writable<QuestProgressChange>).stageCompleted = true;
-			(change as Writable<QuestProgressChange>).questCompleted = questCompleted;
-		}
+				};
 	}
 
-	return { state: nextState, changes };
+	return {
+		state: nextState,
+		changes: stageCompleted
+			? changes.map((change) => ({ ...change, stageCompleted: true, questCompleted }))
+			: changes,
+	};
 }
 
 export function applyCollectibleAcquired(
@@ -150,24 +155,27 @@ export function applyCollectibleAcquired(
 		definitionsById.set(definition.id, definition);
 	}
 
-	const activeQuests: Record<string, ActiveQuestState> = { ...profile.activeQuests };
+	const activeQuests: Record<string, ActiveQuestState> = {};
 	const completedQuestIds = [...profile.completedQuestIds];
 	const changes = new Array<QuestProgressChange>();
 
 	for (const [questId, state] of pairs(profile.activeQuests)) {
 		const definition = definitionsById.get(questId);
 		if (definition === undefined || state.definitionVersion !== definition.version) {
+			activeQuests[questId] = state;
 			continue;
 		}
 
 		const result = applyEventToQuest(definition, state, event, now);
 		if (result.changes.size() === 0) {
+			activeQuests[questId] = state;
 			continue;
 		}
 
-		changes.push(...result.changes);
+		for (const change of result.changes) {
+			changes.push(change);
+		}
 		if (result.state.status === "Completed") {
-			activeQuests[questId] = undefined!;
 			if (!completedQuestIds.includes(questId)) {
 				completedQuestIds.push(questId);
 			}
@@ -181,5 +189,5 @@ export function applyCollectibleAcquired(
 		: {
 				profile: { ...profile, activeQuests, completedQuestIds },
 				changes,
-		  };
+			};
 }
