@@ -23,7 +23,25 @@ export const questProfileValidator = v.object({
 
 export type QuestProfile = Infer<typeof questProfileValidator>;
 
+export const inventoryProfileValidator = v.object({
+	schemaVersion: v.literal(1),
+	itemQuantities: v.record(v.string(), v.number()),
+	claimedWorldPickupIds: v.array(v.string()),
+});
+
+export const playerProfileValidator = v.object({
+	schemaVersion: v.literal(1),
+	questProfile: questProfileValidator,
+	inventoryProfile: inventoryProfileValidator,
+});
+
+export type InventoryProfile = Infer<typeof inventoryProfileValidator>;
+export type PlayerProfile = Infer<typeof playerProfileValidator>;
+
 const MAX_PERSISTED_ID_LENGTH = 128;
+const MAX_INVENTORY_ITEM_TYPES = 200;
+const MAX_CLAIMED_WORLD_PICKUPS = 5_000;
+const MAX_INVENTORY_STACK_QUANTITY = 1_000_000;
 
 function assertPersistedId(value: unknown, label: string): asserts value is string {
 	if (typeof value !== "string" || value.length === 0 || value.length > MAX_PERSISTED_ID_LENGTH) {
@@ -78,6 +96,41 @@ export function assertValidQuestProfile(profile: QuestProfile): void {
 	}
 }
 
+export function assertValidInventoryProfile(profile: InventoryProfile): void {
+	if (
+		profile?.schemaVersion !== 1 ||
+		typeof profile.itemQuantities !== "object" ||
+		profile.itemQuantities === null ||
+		Array.isArray(profile.itemQuantities) ||
+		!Array.isArray(profile.claimedWorldPickupIds)
+	) {
+		throw new Error("Inventory profile does not match schema version 1.");
+	}
+	const items = Object.entries(profile.itemQuantities);
+	if (items.length > MAX_INVENTORY_ITEM_TYPES) throw new Error("Inventory contains too many item types.");
+	for (const [itemId, quantity] of items) {
+		assertPersistedId(itemId, "inventory item ID");
+		assertNonNegativeInteger(quantity, `Inventory item '${itemId}' quantity`, true);
+		if (quantity > MAX_INVENTORY_STACK_QUANTITY)
+			throw new Error(`Inventory item '${itemId}' quantity is too large.`);
+	}
+	if (profile.claimedWorldPickupIds.length > MAX_CLAIMED_WORLD_PICKUPS) {
+		throw new Error("Inventory contains too many claimed world pickups.");
+	}
+	const pickupIds = new Set<string>();
+	for (const pickupId of profile.claimedWorldPickupIds) {
+		assertPersistedId(pickupId, "claimed world pickup ID");
+		if (pickupIds.has(pickupId)) throw new Error(`Claimed world pickup '${pickupId}' is duplicated.`);
+		pickupIds.add(pickupId);
+	}
+}
+
+export function assertValidPlayerProfile(profile: PlayerProfile): void {
+	if (profile?.schemaVersion !== 1) throw new Error("Player profile does not match schema version 1.");
+	assertValidQuestProfile(profile.questProfile);
+	assertValidInventoryProfile(profile.inventoryProfile);
+}
+
 export const profileSessionValidator = v.object({
 	id: v.string(),
 	serverId: v.string(),
@@ -85,7 +138,7 @@ export const profileSessionValidator = v.object({
 	expiresAt: v.number(),
 });
 
-export const operationKindValidator = v.union(v.literal("save"), v.literal("release"));
+export const operationKindValidator = v.union(v.literal("save"), v.literal("release"), v.literal("abandon"));
 export const migrationStatusValidator = v.union(v.literal("pending"), v.literal("complete"));
 export const lastOperationValidator = v.object({
 	id: v.string(),
@@ -96,7 +149,7 @@ export const lastOperationValidator = v.object({
 export const acquireResultValidator = v.union(
 	v.object({
 		status: v.literal("ok"),
-		profile: questProfileValidator,
+		profile: playerProfileValidator,
 		revision: v.number(),
 		leaseExpiresAt: v.number(),
 		migrationRequired: v.boolean(),

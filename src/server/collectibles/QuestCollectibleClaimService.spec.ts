@@ -1,11 +1,9 @@
 import { afterEach, describe, expect, it } from "@rbxts/jest-globals";
 import { CollectionService } from "@rbxts/services";
 
-import { QUEST_DEFINITIONS, SACRED_OLIVE_BRANCH_ITEM_ID } from "shared/quests/QuestDefinitions";
+import { SACRED_OLIVE_BRANCH_ITEM_ID } from "shared/quests/QuestDefinitions";
 
-import { QuestProfileService } from "server/quests/QuestProfileService";
-import { ResilientQuestProfileStore } from "server/quests/persistence/ResilientQuestProfileStore";
-import { FakeQuestProfileRepository } from "server/quests/testing/FakeQuestProfileRepository";
+import { createTestPlayerServices } from "server/player/testing/createTestPlayerServices";
 
 import { QUEST_COLLECTIBLE_ATTRIBUTES, QUEST_COLLECTIBLE_TAG } from "./CollectibleMetadata";
 import { CollectibleRegistry, RobloxCollectionTagSource } from "./CollectibleRegistry";
@@ -42,22 +40,15 @@ afterEach(() => {
 
 describe("QuestCollectibleClaimService", () => {
 	it("rejects an unbounded interaction distance", () => {
-		const repository = new FakeQuestProfileRepository();
-		const profiles = new QuestProfileService(
-			new ResilientQuestProfileStore(repository, { maxAttempts: 1, baseDelaySeconds: 0, maxDelaySeconds: 0 }),
-			QUEST_DEFINITIONS,
-		);
+		const profiles = createTestPlayerServices().quests;
 		const registry = new CollectibleRegistry(new RobloxCollectionTagSource());
 		expect(() => new QuestCollectibleClaimService(registry, profiles, math.huge)).toThrow();
 	});
 
 	it("derives item data on the server and deduplicates repeat claims", () => {
-		const repository = new FakeQuestProfileRepository();
-		const profiles = new QuestProfileService(
-			new ResilientQuestProfileStore(repository, { maxAttempts: 1, baseDelaySeconds: 0, maxDelaySeconds: 0 }),
-			QUEST_DEFINITIONS,
-		);
-		expect(profiles.load("player:1").ok).toBe(true);
+		const services = createTestPlayerServices();
+		const profiles = services.quests;
+		expect(services.playerProfiles.load("player:1").ok).toBe(true);
 
 		const collectible = track(new Instance("Part"));
 		collectible.Position = new Vector3(0, 0, 0);
@@ -82,11 +73,7 @@ describe("QuestCollectibleClaimService", () => {
 	});
 
 	it("rejects unregistered instances, distant characters, and unloaded profiles", () => {
-		const repository = new FakeQuestProfileRepository();
-		const profiles = new QuestProfileService(
-			new ResilientQuestProfileStore(repository, { maxAttempts: 1, baseDelaySeconds: 0, maxDelaySeconds: 0 }),
-			QUEST_DEFINITIONS,
-		);
+		const profiles = createTestPlayerServices().quests;
 		const collectible = track(new Instance("Part"));
 		collectible.SetAttribute(QUEST_COLLECTIBLE_ATTRIBUTES.collectibleId, "olive:guarded");
 		collectible.SetAttribute(QUEST_COLLECTIBLE_ATTRIBUTES.itemId, SACRED_OLIVE_BRANCH_ITEM_ID);

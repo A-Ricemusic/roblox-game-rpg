@@ -11,3 +11,5 @@ Please use correct types and DO NOT use type any unless it is specifically neces
 Before changing quests, read `docs/quest-system-implementation.md` and `docs/quest-system-design.md`. Before adding or changing tests, read `docs/testing.md` and keep runtime behavior tests inside Roblox.
 
 Before changing player persistence, profiles, or database configuration, read `docs/player-database.md`. Roblox clients must never call Convex or receive database credentials.
+
+Before changing inventory, items, or world pickups, read `docs/inventory-system.md`. Inventory must remain independent of weapon and combat behavior until an explicit integration is designed.

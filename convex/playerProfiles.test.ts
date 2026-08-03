@@ -5,7 +5,9 @@ import { internal } from "./_generated/api";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.*s");
-const profile = { schemaVersion: 1 as const, activeQuests: {}, completedQuestIds: [] };
+const questProfile = { schemaVersion: 1 as const, activeQuests: {}, completedQuestIds: [] };
+const inventoryProfile = { schemaVersion: 1 as const, itemQuantities: {}, claimedWorldPickupIds: [] };
+const profile = { schemaVersion: 1 as const, questProfile, inventoryProfile };
 const authorization = "Bearer test-secret-that-is-at-least-thirty-two-characters-long";
 
 describe("player profile transactions", () => {
@@ -182,7 +184,11 @@ describe("player profile transactions", () => {
 				operationId: "save:invalid-profile",
 				expectedRevision: 0,
 				leaseSeconds: 180,
-				profile: { schemaVersion: 1, activeQuests: { quest: activeQuest }, completedQuestIds: [] },
+				profile: {
+					schemaVersion: 1,
+					questProfile: { schemaVersion: 1, activeQuests: { quest: activeQuest }, completedQuestIds: [] },
+					inventoryProfile,
+				},
 			}),
 		).rejects.toThrow("mismatched questId");
 	});
@@ -210,6 +216,33 @@ describe("player profile transactions", () => {
 				leaseSeconds: 180,
 			}),
 		).rejects.toThrow("different operation");
+	});
+
+	it("abandons an invalid loaded profile without mutating its data or revision", async () => {
+		const t = convexTest({ schema, modules });
+		await t.mutation(internal.playerProfiles.acquire, {
+			profileKey: "player:abandon",
+			sessionId: "session:a",
+			serverId: "server:a",
+			leaseSeconds: 180,
+		});
+		const abandoned = await t.mutation(internal.playerProfiles.abandon, {
+			profileKey: "player:abandon",
+			sessionId: "session:a",
+			operationId: "abandon:one",
+		});
+		expect(abandoned).toEqual({ status: "ok", revision: 0 });
+		const reacquired = await t.mutation(internal.playerProfiles.acquire, {
+			profileKey: "player:abandon",
+			sessionId: "session:b",
+			serverId: "server:b",
+			leaseSeconds: 180,
+		});
+		expect(reacquired.status).toBe("ok");
+		if (reacquired.status === "ok") {
+			expect(reacquired.revision).toBe(0);
+			expect(reacquired.migrationRequired).toBe(true);
+		}
 	});
 });
 
@@ -315,8 +348,12 @@ describe("player profile HTTP API", () => {
 				leaseSeconds: 180,
 				profile: {
 					schemaVersion: 1,
-					activeQuests: {},
-					completedQuestIds: ["duplicate", "duplicate"],
+					questProfile: {
+						schemaVersion: 1,
+						activeQuests: {},
+						completedQuestIds: ["duplicate", "duplicate"],
+					},
+					inventoryProfile,
 				},
 			}),
 		});

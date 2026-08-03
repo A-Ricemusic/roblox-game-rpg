@@ -1,71 +1,53 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 
 import { QUEST_DEFINITIONS, SACRED_OLIVE_BRANCH_ITEM_ID } from "shared/quests/QuestDefinitions";
+import { PlayerProfile } from "shared/player/PlayerProfile";
 
-import { ResilientQuestProfileStore } from "./persistence/ResilientQuestProfileStore";
-import { FakeQuestProfileRepository } from "./testing/FakeQuestProfileRepository";
-import { QuestProfileService } from "./QuestProfileService";
+import { FakePlayerProfileRepository } from "server/player/testing/FakePlayerProfileRepository";
+import { createTestPlayerServices } from "server/player/testing/createTestPlayerServices";
 
-function createService(repository: FakeQuestProfileRepository): QuestProfileService {
-	return new QuestProfileService(
-		new ResilientQuestProfileStore(
-			repository,
-			{ maxAttempts: 2, baseDelaySeconds: 0, maxDelaySeconds: 0 },
-			() => undefined,
-		),
-		QUEST_DEFINITIONS,
-	);
-}
-
-describe("QuestProfileService", () => {
-	it("loads a new profile, starts configured quests, and saves collection progress", () => {
-		const repository = new FakeQuestProfileRepository();
-		const service = createService(repository);
-		const loaded = service.load("player:1", 100);
-
+describe("Player and quest profile services", () => {
+	it("loads legacy quest data, starts auto quests, and saves an aggregate player profile", () => {
+		const services = createTestPlayerServices();
+		const loaded = services.playerProfiles.load("player:1", 100);
 		expect(loaded.ok).toBe(true);
-		if (!loaded.ok) return;
-
 		const questId = QUEST_DEFINITIONS[0].id;
-		expect(loaded.profile.activeQuests[questId]).toBeDefined();
+		expect(services.quests.get("player:1")?.activeQuests[questId]).toBeDefined();
 
-		const event = {
+		const update = services.quests.applyCollectible("player:1", {
 			kind: "CollectibleAcquired",
 			itemId: SACRED_OLIVE_BRANCH_ITEM_ID,
 			quantity: 1,
 			source: "WorldTag",
 			sourceId: "olive:1",
-		} as const;
-		const update = service.applyCollectible("player:1", event, 101);
+		});
 		expect(update?.changes).toHaveLength(1);
-		expect(service.save("player:1").ok).toBe(true);
-		expect(repository.getStored("player:1")).toEqual(update?.profile);
+		expect(services.playerProfiles.save("player:1").ok).toBe(true);
+		const stored = services.repository.getStored("player:1") as PlayerProfile;
+		expect(stored.questProfile).toBe(update?.profile);
+		expect(stored.inventoryProfile.itemQuantities).toEqual({});
 	});
 
-	it("does not unload a profile when saving ultimately fails", () => {
-		const repository = new FakeQuestProfileRepository();
-		const service = createService(repository);
-		expect(service.load("player:2").ok).toBe(true);
+	it("does not unload when the aggregate release ultimately fails", () => {
+		const repository = new FakePlayerProfileRepository();
+		const services = createTestPlayerServices(repository);
+		expect(services.playerProfiles.load("player:2").ok).toBe(true);
 		repository.queueReleaseResult({ ok: false, error: "throttled", retryable: true });
 		repository.queueReleaseResult({ ok: false, error: "still throttled", retryable: true });
-
-		const result = service.unload("player:2");
-
-		expect(result.ok).toBe(false);
-		expect(service.get("player:2")).toBeDefined();
+		expect(services.playerProfiles.unload("player:2").ok).toBe(false);
+		expect(services.playerProfiles.get("player:2")).toBeDefined();
 	});
 
-	it("rejects malformed persisted data instead of silently replacing it", () => {
-		const repository = new FakeQuestProfileRepository();
+	it("abandons the acquired session when persisted data is malformed", () => {
+		const repository = new FakePlayerProfileRepository();
 		repository.seed("player:3", { schemaVersion: 999 });
-
-		const result = createService(repository).load("player:3");
-
+		const result = createTestPlayerServices(repository).playerProfiles.load("player:3");
 		expect(result.ok).toBe(false);
+		expect(repository.abandonCalls).toBe(1);
 	});
 
-	it("rejects incompatible active stages before they can reach the engine", () => {
-		const repository = new FakeQuestProfileRepository();
+	it("rejects incompatible active stages and abandons the session", () => {
+		const repository = new FakePlayerProfileRepository();
 		const definition = QUEST_DEFINITIONS[0];
 		repository.seed("player:invalid-stage", {
 			schemaVersion: 1,
@@ -82,26 +64,24 @@ describe("QuestProfileService", () => {
 			},
 			completedQuestIds: [],
 		});
-
-		expect(createService(repository).load("player:invalid-stage").ok).toBe(false);
+		expect(createTestPlayerServices(repository).playerProfiles.load("player:invalid-stage").ok).toBe(false);
+		expect(repository.abandonCalls).toBe(1);
 	});
 
-	it("does not overwrite an already loaded profile with stale repository data", () => {
-		const repository = new FakeQuestProfileRepository();
-		const service = createService(repository);
-		expect(service.load("player:4").ok).toBe(true);
-
-		const update = service.applyCollectible("player:4", {
+	it("returns the already loaded aggregate without a stale repository reload", () => {
+		const services = createTestPlayerServices();
+		expect(services.playerProfiles.load("player:4").ok).toBe(true);
+		services.quests.applyCollectible("player:4", {
 			kind: "CollectibleAcquired",
 			itemId: SACRED_OLIVE_BRANCH_ITEM_ID,
 			quantity: 1,
 			source: "WorldTag",
 			sourceId: "olive:4",
 		});
-		const loadedAgain = service.load("player:4");
-
+		const current = services.playerProfiles.get("player:4");
+		const loadedAgain = services.playerProfiles.load("player:4");
 		expect(loadedAgain.ok).toBe(true);
-		if (loadedAgain.ok) expect(loadedAgain.profile).toBe(update?.profile);
-		expect(repository.loadCalls).toBe(1);
+		if (loadedAgain.ok) expect(loadedAgain.profile).toBe(current);
+		expect(services.repository.loadCalls).toBe(1);
 	});
 });

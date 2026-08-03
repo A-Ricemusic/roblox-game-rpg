@@ -79,15 +79,16 @@ originate from server-owned Instances and services.
 
 - `main.server.ts` wires player load/save/unload, autosave, prompt claims, remotes,
   registry lifetime, and shutdown.
-- `quests/QuestProfileService.ts` is the only owner of loaded quest profiles.
+- `player/PlayerProfileService.ts` owns loaded aggregate profiles;
+  `quests/QuestProfileService.ts` is the quest-domain facade.
 - `quests/QuestRemoteService.ts` rate-limits read-only snapshot requests.
 - `collectibles/CollectibleMetadata.ts` defines tags/attributes and distance rules.
 - `collectibles/CollectibleRegistry.ts` tracks valid tagged Instances and globally
   unique collectible source IDs.
 - `collectibles/QuestCollectibleClaimService.ts` converts an authoritative world
   interaction into a domain event.
-- `quests/persistence/` contains the repository contract, retry wrapper, Convex
-  adapter, legacy DataStore adapter, in-memory adapter, and fakes.
+- `player/persistence/` contains aggregate Convex, DataStore, memory, retry, and fake
+  adapters. `quests/persistence/` retains the legacy quest DataStore migration reader.
 - `config/PlayerDatabaseConfig.ts` selects isolated Studio versus production
   persistence configuration.
 
@@ -203,8 +204,9 @@ The lifecycle is:
 2. Optionally import a legacy DataStore record while migration is pending.
 3. Decode and validate the profile before exposing it to gameplay.
 4. Start configured auto-start quests.
-5. Autosave every 60 seconds, renewing the 180-second lease.
-6. Atomically save and release when the player leaves or the server closes.
+5. Load or initialize inventory state inside the same aggregate profile.
+6. Autosave every 60 seconds, renewing the 180-second lease.
+7. Atomically save both domains and release when the player leaves or server closes.
 
 Retryable failures use capped exponential backoff. Revision or session conflicts are
 terminal because overwriting would risk data loss. Never silently fall back from
@@ -277,13 +279,6 @@ Before handing off:
 
 These are known hardening items, not features that are already implemented:
 
-- If persistence acquisition succeeds but profile decoding or definition validation
-  fails, explicitly abandon the Convex session. The current error path retains the
-  local session for the server lifetime and the remote lease until expiration, so an
-  immediate reconnect can fail.
-- Guard the player load lifecycle against overlapping loads and a player leaving while
-  the HTTP acquisition yields. A late successful load must be released instead of
-  remaining cached after `PlayerRemoving` has already run.
 - Put explicit size limits on processed source IDs, active quests, completed quests,
   stages, and objectives. A `CollectItem` requirement can currently be as high as one
   million, and every contributing source ID is persisted in the profile.

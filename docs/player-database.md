@@ -2,7 +2,7 @@
 
 ## Current production deployment
 
-Player quest profiles are stored in the Convex project `anthonyricemath/robloxgame`.
+Aggregate player profiles are stored in the Convex project `anthonyricemath/robloxgame`.
 The production deployment is `grand-basilisk-273`:
 
 - Function URL: `https://grand-basilisk-273.convex.cloud`
@@ -15,8 +15,9 @@ servers use production. These defaults live in the server configuration module
 rather than DataModel root attributes so Rojo cannot clear them while a play session
 starts.
 
-The schema and HTTP actions are already deployed. The server configuration carries
-the non-secret environment URLs and secret-name default. Never put the shared
+The repository contains the aggregate quest/inventory schema and HTTP actions. Deploy
+those Convex changes before enabling an inventory build against an environment. The
+server configuration carries the non-secret environment URLs and secret-name default. Never put the shared
 secret, a Convex deploy key, or a Convex admin key in source control or a Roblox
 client.
 
@@ -47,7 +48,7 @@ or shorter than 32 characters.
 
 ```text
 Roblox client
-    │ display-only quest snapshots / interaction intent
+    │ display-only domain snapshots / interaction intent
     ▼
 Roblox game server (authoritative)
     │ HTTPS + Secret Store Authorization header
@@ -67,15 +68,18 @@ The current `playerProfiles` document contains:
 
 - stable `profileKey` (`player:<Roblox user id>`), indexed uniquely by convention;
 - the strictly validated quest profile;
+- the strictly validated inventory profile containing quantities and claimed pickup
+  IDs;
 - a monotonically increasing revision;
 - `pending` or `complete` legacy-migration state;
 - an optional server session lease;
 - the most recent idempotent operation marker;
 - creation and update timestamps.
 
-Keep future inventory, currency, equipment, achievements, and other persistent
-player domains behind their own typed repository/service boundaries. Extend the
-profile schema deliberately; do not let unrelated systems mutate the quest object.
+Quest and inventory use separate typed domain services while sharing one aggregate
+load/save transaction. Keep future currency, equipment, achievements, and other
+persistent domains behind their own typed boundaries. Extend the aggregate schema
+deliberately; do not let unrelated systems mutate quest or inventory child objects.
 
 ## Concurrency and failure safety
 

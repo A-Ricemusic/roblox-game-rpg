@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { assertValidQuestProfile, type QuestProfile } from "./validators";
+import {
+	assertValidInventoryProfile,
+	assertValidQuestProfile,
+	type InventoryProfile,
+	type QuestProfile,
+} from "./validators";
 
 function activeQuest() {
 	return {
@@ -96,5 +101,35 @@ describe("quest profile semantic validation", () => {
 			},
 			"duplicate source ID",
 		);
+	});
+});
+
+describe("inventory profile semantic validation", () => {
+	it("accepts bounded item stacks and unique claimed pickups", () => {
+		expect(() =>
+			assertValidInventoryProfile({
+				schemaVersion: 1,
+				itemQuantities: { marble_fragment: 3 },
+				claimedWorldPickupIds: ["ruins:marble:1"],
+			}),
+		).not.toThrow();
+	});
+
+	it("rejects malformed quantities and duplicate pickup IDs", () => {
+		expect(() =>
+			assertValidInventoryProfile({
+				schemaVersion: 1,
+				itemQuantities: { marble_fragment: -1 },
+				claimedWorldPickupIds: [],
+			}),
+		).toThrow("quantity");
+		expect(() =>
+			assertValidInventoryProfile({
+				schemaVersion: 1,
+				itemQuantities: {},
+				claimedWorldPickupIds: ["same", "same"],
+			}),
+		).toThrow("duplicated");
+		expect(() => assertValidInventoryProfile(undefined as unknown as InventoryProfile)).toThrow("schema version 1");
 	});
 });

@@ -1,13 +1,14 @@
 import { HttpService, RunService } from "@rbxts/services";
 
 import { ConvexHttpTransport, RobloxConvexHttpTransport } from "server/quests/persistence/ConvexHttpTransport";
-import { ConvexQuestProfileRepository } from "server/quests/persistence/ConvexQuestProfileRepository";
+import { ConvexPlayerProfileRepository } from "server/player/persistence/ConvexPlayerProfileRepository";
+import { DataStorePlayerProfileRepository } from "server/player/persistence/DataStorePlayerProfileRepository";
+import { InMemoryPlayerProfileRepository } from "server/player/persistence/InMemoryPlayerProfileRepository";
+import { PlayerProfileRepository } from "server/player/persistence/PlayerProfileRepository";
 import {
 	DataStoreQuestProfileRepository,
 	PRODUCTION_QUEST_DATA_STORE_NAME,
 } from "server/quests/persistence/DataStoreQuestProfileRepository";
-import { InMemoryQuestProfileRepository } from "server/quests/persistence/InMemoryQuestProfileRepository";
-import { QuestProfileRepository } from "server/quests/persistence/QuestProfileRepository";
 
 export const PLAYER_DATABASE_BACKEND_ATTRIBUTE = "PlayerDatabaseBackend";
 export const CONVEX_SITE_URL_ATTRIBUTE = "ConvexSiteUrl";
@@ -50,15 +51,15 @@ export function resolveShouldMigrateDataStore(configured: unknown, isStudio: boo
 export function createPlayerDatabaseRepository(
 	transportFactory: (siteUrl: string, authorization: Secret) => ConvexHttpTransport = (siteUrl, authorization) =>
 		new RobloxConvexHttpTransport(siteUrl, authorization),
-): QuestProfileRepository {
+): PlayerProfileRepository {
 	const selected = backend();
 	if (selected === "Memory") {
 		warn("[PlayerDatabase] Using non-persistent in-memory player profiles.");
-		return new InMemoryQuestProfileRepository();
+		return new InMemoryPlayerProfileRepository();
 	}
 	if (selected === "DataStore") {
 		warn("[PlayerDatabase] Using the legacy Roblox DataStore backend.");
-		return new DataStoreQuestProfileRepository();
+		return new DataStorePlayerProfileRepository();
 	}
 
 	assert(HttpService.HttpEnabled, "Convex requires Game Settings > Security > Allow HTTP Requests.");
@@ -70,10 +71,10 @@ export function createPlayerDatabaseRepository(
 		? new DataStoreQuestProfileRepository(PRODUCTION_QUEST_DATA_STORE_NAME)
 		: undefined;
 
-	return new ConvexQuestProfileRepository(transportFactory(siteUrl, authorization), {
+	return new ConvexPlayerProfileRepository(transportFactory(siteUrl, authorization), {
 		serverId: game.JobId.size() > 0 ? game.JobId : `studio:${game.PlaceId}`,
 		leaseSeconds: DEFAULT_CONVEX_LEASE_SECONDS,
 		createId: () => HttpService.GenerateGUID(false),
-		legacyRepository,
+		legacyQuestRepository: legacyRepository,
 	});
 }

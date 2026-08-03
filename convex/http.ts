@@ -2,7 +2,7 @@ import { httpRouter } from "convex/server";
 
 import { internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
-import { assertValidQuestProfile, type QuestProfile } from "./validators";
+import { assertValidPlayerProfile, type PlayerProfile } from "./validators";
 
 const http = httpRouter();
 const JSON_HEADERS = { "Content-Type": "application/json" };
@@ -32,12 +32,12 @@ function readNumber(record: JsonRecord, key: string): number {
 	return value;
 }
 
-function readProfile(record: JsonRecord): QuestProfile {
+function readProfile(record: JsonRecord): PlayerProfile {
 	// Convex validates the generated mutation contract again. This explicit check
 	// also enforces integer, identifier, uniqueness, and cross-field invariants.
-	const profile = record.profile as QuestProfile;
+	const profile = record.profile as PlayerProfile;
 	try {
-		assertValidQuestProfile(profile);
+		assertValidPlayerProfile(profile);
 	} catch {
 		throw new InvalidRequestError("profile must be a valid quest profile.");
 	}
@@ -68,6 +68,25 @@ http.route({
 	path: "/v1/health",
 	method: "GET",
 	handler: httpAction(async () => jsonResponse({ status: "ok", service: "player-database", version: 1 })),
+});
+
+http.route({
+	path: "/v1/player-profile/abandon",
+	method: "POST",
+	handler: httpAction(async (ctx, request) => {
+		try {
+			if (!authorized(request)) return jsonResponse({ error: "unauthorized" }, 401);
+			const body = await readObject(request);
+			const result = await ctx.runMutation(internal.playerProfiles.abandon, {
+				profileKey: readString(body, "profileKey"),
+				sessionId: readString(body, "sessionId"),
+				operationId: readString(body, "operationId"),
+			});
+			return jsonResponse(result, result.status === "ok" ? 200 : 409);
+		} catch (error: unknown) {
+			return requestErrorResponse("Abandon", error);
+		}
+	}),
 });
 
 http.route({

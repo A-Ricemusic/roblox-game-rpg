@@ -3,8 +3,10 @@ import { v } from "convex/values";
 import { internalMutation } from "./_generated/server";
 import {
 	acquireResultValidator,
-	assertValidQuestProfile,
-	questProfileValidator,
+	assertValidPlayerProfile,
+	type InventoryProfile,
+	type QuestProfile,
+	playerProfileValidator,
 	writeResultValidator,
 } from "./validators";
 
@@ -19,6 +21,14 @@ function emptyQuestProfile() {
 		activeQuests: {},
 		completedQuestIds: [],
 	};
+}
+
+function emptyInventoryProfile() {
+	return { schemaVersion: 1 as const, itemQuantities: {}, claimedWorldPickupIds: [] };
+}
+
+function playerProfile(questProfile: QuestProfile, inventoryProfile: InventoryProfile = emptyInventoryProfile()) {
+	return { schemaVersion: 1 as const, questProfile, inventoryProfile };
 }
 
 function assertIdentifier(value: string, label: string, maxLength = MAX_IDENTIFIER_LENGTH): void {
@@ -54,10 +64,12 @@ export const acquire = internalMutation({
 			.unique();
 
 		if (existing === null) {
-			const profile = emptyQuestProfile();
+			const questProfile = emptyQuestProfile();
+			const inventoryProfile = emptyInventoryProfile();
 			await ctx.db.insert("playerProfiles", {
 				profileKey: args.profileKey,
-				questProfile: profile,
+				questProfile,
+				inventoryProfile,
 				migrationStatus: "pending",
 				revision: 0,
 				session: { id: args.sessionId, serverId: args.serverId, acquiredAt: now, expiresAt },
@@ -66,7 +78,7 @@ export const acquire = internalMutation({
 			});
 			return {
 				status: "ok" as const,
-				profile,
+				profile: playerProfile(questProfile, inventoryProfile),
 				revision: 0,
 				leaseExpiresAt: expiresAt,
 				migrationRequired: true,
@@ -88,7 +100,7 @@ export const acquire = internalMutation({
 		});
 		return {
 			status: "ok" as const,
-			profile: existing.questProfile,
+			profile: playerProfile(existing.questProfile, existing.inventoryProfile ?? emptyInventoryProfile()),
 			revision: existing.revision,
 			leaseExpiresAt: expiresAt,
 			migrationRequired: existing.migrationStatus === "pending",
@@ -103,14 +115,14 @@ export const save = internalMutation({
 		operationId: v.string(),
 		expectedRevision: v.number(),
 		leaseSeconds: v.number(),
-		profile: questProfileValidator,
+		profile: playerProfileValidator,
 	},
 	returns: writeResultValidator,
 	handler: async (ctx, args) => {
 		assertIdentifier(args.profileKey, "profileKey", MAX_PROFILE_KEY_LENGTH);
 		assertIdentifier(args.sessionId, "sessionId");
 		assertIdentifier(args.operationId, "operationId");
-		assertValidQuestProfile(args.profile);
+		assertValidPlayerProfile(args.profile);
 		const now = Date.now();
 		const expiresAt = now + leaseDurationMs(args.leaseSeconds);
 		const existing = await ctx.db
@@ -136,7 +148,8 @@ export const save = internalMutation({
 
 		const revision = existing.revision + 1;
 		await ctx.db.patch(existing._id, {
-			questProfile: args.profile,
+			questProfile: args.profile.questProfile,
+			inventoryProfile: args.profile.inventoryProfile,
 			migrationStatus: "complete",
 			revision,
 			session: { ...existing.session, expiresAt },
@@ -153,14 +166,14 @@ export const release = internalMutation({
 		sessionId: v.string(),
 		operationId: v.string(),
 		expectedRevision: v.number(),
-		profile: questProfileValidator,
+		profile: playerProfileValidator,
 	},
 	returns: writeResultValidator,
 	handler: async (ctx, args) => {
 		assertIdentifier(args.profileKey, "profileKey", MAX_PROFILE_KEY_LENGTH);
 		assertIdentifier(args.sessionId, "sessionId");
 		assertIdentifier(args.operationId, "operationId");
-		assertValidQuestProfile(args.profile);
+		assertValidPlayerProfile(args.profile);
 		const now = Date.now();
 		const existing = await ctx.db
 			.query("playerProfiles")
@@ -180,7 +193,8 @@ export const release = internalMutation({
 
 		const revision = existing.revision + 1;
 		await ctx.db.patch(existing._id, {
-			questProfile: args.profile,
+			questProfile: args.profile.questProfile,
+			inventoryProfile: args.profile.inventoryProfile,
 			migrationStatus: "complete",
 			revision,
 			session: undefined,
@@ -188,5 +202,39 @@ export const release = internalMutation({
 			updatedAt: now,
 		});
 		return { status: "ok" as const, revision };
+	},
+});
+
+export const abandon = internalMutation({
+	args: {
+		profileKey: v.string(),
+		sessionId: v.string(),
+		operationId: v.string(),
+	},
+	returns: writeResultValidator,
+	handler: async (ctx, args) => {
+		assertIdentifier(args.profileKey, "profileKey", MAX_PROFILE_KEY_LENGTH);
+		assertIdentifier(args.sessionId, "sessionId");
+		assertIdentifier(args.operationId, "operationId");
+		const now = Date.now();
+		const existing = await ctx.db
+			.query("playerProfiles")
+			.withIndex("by_profile_key", (query) => query.eq("profileKey", args.profileKey))
+			.unique();
+		if (existing?.lastOperation?.id === args.operationId) {
+			if (existing.lastOperation.kind !== "abandon") {
+				throw new Error("operationId was already used for a different operation.");
+			}
+			return { status: "ok" as const, revision: existing.lastOperation.revision };
+		}
+		if (existing === null || existing.session?.id !== args.sessionId) {
+			return { status: "session_conflict" as const };
+		}
+		await ctx.db.patch(existing._id, {
+			session: undefined,
+			lastOperation: { id: args.operationId, kind: "abandon", revision: existing.revision },
+			updatedAt: now,
+		});
+		return { status: "ok" as const, revision: existing.revision };
 	},
 });
