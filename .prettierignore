@@ -10,3 +10,4 @@ coverage
 docs/*.html
 docs/*.md
 package-lock.json
+convex/_generated

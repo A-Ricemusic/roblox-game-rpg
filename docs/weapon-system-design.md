@@ -1,6 +1,6 @@
 # Weapon System Design
 
-Status: implementation design for the first playable weapon slice  
+Status: first spawn/equip and procedural light-swing slice implemented and playtested  
 First weapon: one-handed Greek sword, no shield  
 Primary platform: mobile, with keyboard and mouse support for development  
 Implementation direction: TypeScript with `roblox-ts`
@@ -37,7 +37,9 @@ Those features should fit the architecture later but are not MVP requirements.
    `ReplicatedStorage/Assets/Weapons`.
 4. Attachment locations, not model dimensions or pivots, define how the weapon is
    held and where its damaging section is located.
-5. The primary hand owns the physical weapon connection through one `Motor6D`.
+5. The primary hand owns the physical weapon connection through one custom
+   `Motor6D`. Character body joints are separate and may be either modern
+   `AnimationConstraint` objects or legacy `Motor6D` objects.
 6. Character combat motion is produced by a reusable procedural pose engine.
 7. Each client animates combatants locally from replicated action events; the server
    does not stream joint transforms every frame.
@@ -354,10 +356,30 @@ interface ProceduralMotion {
 }
 ```
 
-The engine blends `Motor6D.Transform` offsets each rendered frame. It layers combat
-poses over normal locomotion so the avatar can retain subtle movement while the upper
-body attacks. Strong attacks may temporarily influence the waist, hips, and movement
-speed to create weight.
+The engine blends joint `Transform` offsets during `RunService.PreSimulation`. New
+Roblox experiences use `AnimationConstraint` as the default R15 avatar joint through
+the Avatar Joint Upgrade; older rigs may still use `Motor6D`. Both expose a
+`Transform` suitable for procedural animation, but `AnimationConstraint:IsA("Motor6D")`
+is false. Joint discovery must therefore support both classes rather than assuming
+the shoulder is an `UpperTorso.RightShoulder` Motor6D.
+
+The current compatibility adapter checks, in order:
+
+- `AnimationConstraint`
+- `Motor6D`
+- `Bone`
+- `Weld` or `ManualWeld`
+
+On the playtested upgraded R15 avatar, `RightShoulder` is an
+`AnimationConstraint` under `RightUpperArm`. The procedural controller locates it by
+semantic joint name and connected body part, then writes its `Transform` during
+`PreSimulation`. This ordering lets the Animator evaluate first and the procedural
+combat pose layer afterward. Do not change rig-attachment `CFrame` values to animate
+the character.
+
+The combat pose layers over normal locomotion so the avatar can retain movement while
+the upper body attacks. Strong attacks may temporarily influence the waist, hips, and
+movement speed to create weight.
 
 Procedural motion should include:
 
@@ -594,3 +616,62 @@ Before implementation, the only manual Studio work required for the first sword 
 
 Everything after those semantic markers—equipping, alignment, procedural poses,
 input, validation, hit detection, damage, and replication—belongs to the codebase.
+
+## 18. Implemented first slice and lessons learned
+
+The following behavior has been confirmed in Roblox Studio:
+
+- The server clones `ReplicatedStorage/Assets/Weapons/HopliteSword` when an R15
+  character spawns.
+- `PrimaryGrip` is aligned with the hand's `RightGripAttachment` using the custom
+  `WeaponGrip` Motor6D.
+- The sword appears in the correct hand and follows the character.
+- Left mouse begins a locally predicted procedural light swing.
+- Gamepad right trigger uses the same abstract attack action.
+- `ContextActionService` creates a dedicated mobile **Attack** button. Generic touch
+  input is deliberately not bound, so ordinary screen and UI taps do not attack.
+- The server validates the request, equipped weapon, living Humanoid, and cooldown,
+  then broadcasts the accepted action for other clients to render.
+- The light swing has anticipation, diagonal strike, follow-through, and recovery
+  phases and returns the affected joints to neutral.
+
+The current slice does **not** deal damage and does not yet implement the three-hit
+combo, charged heavy attack, or block. Those remain the next combat milestones.
+
+### Avatar Joint Upgrade compatibility
+
+Future agents must not assume R15 body joints are Motor6Ds. The initial procedural
+animation failed silently because the runtime avatar used `AnimationConstraint` for
+`RightShoulder`; the only Motor6D found was the custom sword `WeaponGrip`. The fix was
+to discover avatar joints semantically, accept `AnimationConstraint`, and apply poses
+during `PreSimulation`.
+
+Roblox reference:
+[AnimationConstraint](https://create.roblox.com/docs/reference/engine/classes/AnimationConstraint).
+
+### Synchronization checklist
+
+This is a TypeScript-first Rojo project. Studio will not receive source changes unless
+both compiler and sync processes are active:
+
+```bash
+# Terminal 1
+npm run watch
+
+# Terminal 2
+rojo serve default.project.json --port 34872
+```
+
+Connect the Studio Rojo plugin to `localhost:34872`, stop the current play session,
+allow Rojo to synchronize, and then start Play again. If new log statements do not
+appear at all, check synchronization before debugging gameplay logic.
+
+### Useful diagnostic prefixes
+
+- `[WeaponServer]`: server runtime, equip, request validation, and broadcast.
+- `[WeaponClient]`: client startup, input binding, prediction, and server response.
+- `[WeaponAnimator]`: joint discovery and procedural pose playback.
+
+Use Studio's **Output** panel with **All Messages** and **All Contexts** selected. The
+debug logging is intentionally verbose while this first combat slice is under active
+development and can be reduced after the remaining actions stabilize.

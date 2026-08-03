@@ -14,6 +14,12 @@
 		"watch": "rbxtsc -w",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
+		"convex:dev": "convex dev",
+		"convex:deploy": "convex deploy",
+		"convex:codegen": "convex codegen",
+		"check:convex": "tsc --project convex/tsconfig.json",
+		"test:convex": "vitest run --config vitest.convex.config.mts",
+		"test:convex:coverage": "vitest run --config vitest.convex.config.mts --coverage",
 		"test:build": "npm run build && rojo build test.project.json --output test.rbxl",
 		"test:build:staging": "npm run build && rojo build test.staging.project.json --output test-staging.rbxl",
 		"test": "npm run test:build && jest-roblox --config jest.config.mjs --no-coverage",
@@ -30,7 +36,13 @@
 		"@rbxts/jest": "3.16.0-ts.1",
 		"@rbxts/jest-globals": "3.16.0-ts.1",
 		"@rbxts/types": "1.0.941",
-		"prettier": "3.9.6"
+		"@types/node": "24.3.0",
+		"@vitest/coverage-v8": "4.1.10",
+		"convex": "1.43.0",
+		"convex-test": "0.0.54",
+		"prettier": "3.9.6",
+		"typescript": "5.9.3",
+		"vitest": "4.1.10"
 	},
 	"overrides": {
 		"@isentinel/jest-roblox": {

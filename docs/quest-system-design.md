@@ -55,6 +55,17 @@ normalize into the same authoritative engine boundary. They must not bypass
 definition validation, profile ownership, deduplication, or server-to-client
 view-model construction.
 
+### Current persistence implementation
+
+Published servers persist quest profiles in Convex through an authenticated,
+server-only HTTP adapter. Per-profile leases prevent two Roblox servers from loading
+the same player concurrently; revision checks and idempotency keys make retries safe;
+and player removal atomically saves and releases ownership. Existing
+`PlayerQuestProfiles_v1` records migrate once through an explicit pending/complete
+marker. Unpublished places use memory unless configured otherwise. Read
+[`player-database.md`](./player-database.md) before changing persistence or adding
+another persistent player domain.
+
 ## 2. Production baseline decisions
 
 These are the default rules for the initial implementation:

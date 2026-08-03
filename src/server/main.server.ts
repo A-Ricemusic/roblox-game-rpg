@@ -5,9 +5,7 @@ import { assertValidQuestDefinitions } from "shared/quests/QuestDefinitionValida
 
 import { CollectibleRegistry, RobloxCollectionTagSource } from "./collectibles/CollectibleRegistry";
 import { QuestCollectibleClaimService } from "./collectibles/QuestCollectibleClaimService";
-import { DataStoreQuestProfileRepository } from "./quests/persistence/DataStoreQuestProfileRepository";
-import { InMemoryQuestProfileRepository } from "./quests/persistence/InMemoryQuestProfileRepository";
-import { QuestProfileRepository } from "./quests/persistence/QuestProfileRepository";
+import { createPlayerDatabaseRepository } from "./config/PlayerDatabaseConfig";
 import { ResilientQuestProfileStore } from "./quests/persistence/ResilientQuestProfileStore";
 import { QuestProfileService } from "./quests/QuestProfileService";
 import { getOrCreateQuestRemote, QuestRemoteService } from "./quests/QuestRemoteService";
@@ -21,10 +19,7 @@ function profileKey(player: Player): string {
 
 assertValidQuestDefinitions(QUEST_DEFINITIONS);
 
-const repository: QuestProfileRepository =
-	game.GameId === 0 ? new InMemoryQuestProfileRepository() : new DataStoreQuestProfileRepository();
-if (game.GameId === 0)
-	warn("[QuestRuntime] Using non-persistent quest profiles in this unpublished development place.");
+const repository = createPlayerDatabaseRepository();
 const store = new ResilientQuestProfileStore(repository);
 const profiles = new QuestProfileService(store, QUEST_DEFINITIONS);
 const registry = new CollectibleRegistry(new RobloxCollectionTagSource());
@@ -88,5 +83,7 @@ game.BindToClose(() => {
 	promptConnection.Disconnect();
 	registry.stop();
 	weapons.stop();
-	for (const player of Players.GetPlayers()) savePlayer(player, false);
+	for (const player of Players.GetPlayers()) {
+		if (profiles.get(profileKey(player)) !== undefined) savePlayer(player, true);
+	}
 });

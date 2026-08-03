@@ -10,6 +10,9 @@ The test stack is:
 - [`@isentinel/roblox-ts`](https://github.com/christopher-buss/roblox-ts) because the terminal runner currently requires this compiler fork for source maps and coverage instrumentation.
 - [Lute](https://github.com/luau-lang/lute) for Luau AST coverage instrumentation.
 - Rojo for deterministic clean and staging test places.
+- `convex-test` with Vitest for the Convex-only schema, transaction, lease,
+  idempotency, and HTTP Action layer. This exception does not move Roblox runtime
+  behavior out of Roblox; Convex functions execute in a separate TypeScript runtime.
 
 Versions are pinned in `package.json`, `package-lock.json`, and `rokit.toml`. Do not upgrade the compiler independently of `@rbxts/compiler-types`; macro compatibility must be verified as a pair.
 
@@ -23,6 +26,8 @@ npm run test:build        # compile and build test.rbxl
 npm test                  # Roblox runtime tests without coverage
 npm run test:coverage     # runtime tests plus enforced coverage thresholds
 npm run test:staging      # opt-in DataStore staging suite
+npm run test:convex       # deterministic Convex transaction/API tests
+npm run test:convex:coverage # Convex tests with 80% global thresholds
 npm run format:check      # formatting gate
 ```
 
@@ -91,6 +96,9 @@ The current suites cover:
 - read-only remote requests, malformed messages, spoofed progress requests, and request rate limiting;
 - quest view-model snapshots, HUD empty/progress rendering, and malformed client payload handling;
 - isolated staging DataStore save/load/remove behavior.
+- Convex leases, expired-session takeover, optimistic revisions, idempotent writes,
+  atomic save-and-release, legacy migration state, HTTP authentication, and malformed
+  API requests.
 
 ## Design rules for new tests
 

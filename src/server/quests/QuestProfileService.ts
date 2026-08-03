@@ -71,7 +71,11 @@ export class QuestProfileService {
 	}
 
 	public unload(profileKey: string): RepositoryResult<void> {
-		const result = this.save(profileKey);
+		const profile = this.profiles.get(profileKey);
+		const result =
+			profile === undefined
+				? { ok: false as const, error: `Profile '${profileKey}' is not loaded.`, retryable: false }
+				: this.store.release(profileKey, profile);
 		if (result.ok) {
 			this.profiles.delete(profileKey);
 		}

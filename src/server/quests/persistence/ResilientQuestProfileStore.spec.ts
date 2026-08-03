@@ -36,6 +36,15 @@ describe("ResilientQuestProfileStore", () => {
 		expect(delays).toHaveLength(0);
 	});
 
+	it("retries the atomic save-and-release operation", () => {
+		const repository = new FakeQuestProfileRepository();
+		repository.queueReleaseResult({ ok: false, error: "timeout", retryable: true });
+		const store = new ResilientQuestProfileStore(repository, TEST_POLICY, () => undefined);
+
+		expect(store.release("player:release", createEmptyQuestProfile()).ok).toBe(true);
+		expect(repository.releaseCalls).toBe(2);
+	});
+
 	it("returns the final failure after exhausting its attempt budget", () => {
 		const repository = new FakeQuestProfileRepository();
 		for (let index = 0; index < TEST_POLICY.maxAttempts; index++) {

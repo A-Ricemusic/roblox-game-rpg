@@ -7,4 +7,5 @@ export type RepositoryResult<T> =
 export interface QuestProfileRepository {
 	load(profileKey: string): RepositoryResult<unknown>;
 	save(profileKey: string, profile: QuestProfile): RepositoryResult<void>;
+	release(profileKey: string, profile: QuestProfile): RepositoryResult<void>;
 }

@@ -40,6 +40,10 @@ jobs:
                   npm run format:check
                   npm audit --audit-level=high
                   npm run build
+                  npm run check:convex
+
+            - name: Test Convex transactions and HTTP actions
+              run: npm run test:convex:coverage
 
             - name: Require the dedicated Roblox test-place credentials
               run: |

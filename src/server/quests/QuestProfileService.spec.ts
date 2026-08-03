@@ -46,8 +46,8 @@ describe("QuestProfileService", () => {
 		const repository = new FakeQuestProfileRepository();
 		const service = createService(repository);
 		expect(service.load("player:2").ok).toBe(true);
-		repository.queueSaveResult({ ok: false, error: "throttled", retryable: true });
-		repository.queueSaveResult({ ok: false, error: "still throttled", retryable: true });
+		repository.queueReleaseResult({ ok: false, error: "throttled", retryable: true });
+		repository.queueReleaseResult({ ok: false, error: "still throttled", retryable: true });
 
 		const result = service.unload("player:2");
 

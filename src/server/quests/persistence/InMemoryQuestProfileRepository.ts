@@ -14,4 +14,8 @@ export class InMemoryQuestProfileRepository implements QuestProfileRepository {
 		this.values.set(profileKey, profile);
 		return { ok: true, value: undefined };
 	}
+
+	public release(profileKey: string, profile: QuestProfile): RepositoryResult<void> {
+		return this.save(profileKey, profile);
+	}
 }

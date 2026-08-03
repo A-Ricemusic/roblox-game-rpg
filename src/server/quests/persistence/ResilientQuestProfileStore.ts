@@ -44,6 +44,10 @@ export class ResilientQuestProfileStore {
 		return this.withRetry(() => this.repository.save(profileKey, profile));
 	}
 
+	public release(profileKey: string, profile: QuestProfile): RepositoryResult<void> {
+		return this.withRetry(() => this.repository.release(profileKey, profile));
+	}
+
 	private withRetry<T>(operation: () => RepositoryResult<T>): RepositoryResult<T> {
 		let result = operation();
 		for (let attempt = 2; !result.ok && result.retryable && attempt <= this.policy.maxAttempts; attempt++) {

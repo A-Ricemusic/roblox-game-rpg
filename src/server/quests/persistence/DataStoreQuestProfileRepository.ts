@@ -32,6 +32,10 @@ export class DataStoreQuestProfileRepository implements QuestProfileRepository {
 			: { ok: false, error: formatDataStoreError(errorValue), retryable: true };
 	}
 
+	public release(profileKey: string, profile: QuestProfile): RepositoryResult<void> {
+		return this.save(profileKey, profile);
+	}
+
 	public removeForStaging(profileKey: string): RepositoryResult<void> {
 		const [ok, errorValue] = pcall(() => this.dataStore.RemoveAsync(profileKey));
 		return ok
