@@ -11,6 +11,7 @@ export class QuestProfileService {
 	) {}
 
 	public get(profileKey: string): QuestProfile | undefined {
+		if (this.playerProfiles.isUnavailable(profileKey)) return undefined;
 		return this.playerProfiles.get(profileKey)?.questProfile;
 	}
 

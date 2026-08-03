@@ -100,6 +100,15 @@ The current suites cover:
   atomic save-and-release, legacy migration state, HTTP authentication, and malformed
   API requests.
 
+## Inventory coverage map
+
+The inventory suites additionally cover definition and stack bounds, dense profile
+decoding, duplicate pickup protection, maximum transaction-ID length, live
+CollectionService registration/removal, unknown item definitions, authoritative
+distance checks, grant-to-quest orchestration, release-time mutation blocking,
+read-only remotes, malformed snapshots, hidden-HUD snapshot caching, and aggregate
+quest/inventory persistence.
+
 ## Design rules for new tests
 
 1. Put deterministic logic behind an injected interface. Use a fake repository, clock, sleeper, or remote in the unit suite.

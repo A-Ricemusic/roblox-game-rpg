@@ -16,6 +16,7 @@ export class InventoryProfileService {
 	) {}
 
 	public get(profileKey: string): InventoryProfile | undefined {
+		if (this.playerProfiles.isUnavailable(profileKey)) return undefined;
 		return this.playerProfiles.get(profileKey)?.inventoryProfile;
 	}
 

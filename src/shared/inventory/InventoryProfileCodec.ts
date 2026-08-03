@@ -5,6 +5,7 @@ import {
 	MAX_CLAIMED_WORLD_PICKUPS,
 	MAX_INVENTORY_ID_LENGTH,
 	MAX_INVENTORY_ITEM_TYPES,
+	MAX_WORLD_PICKUP_ID_LENGTH,
 } from "./InventoryTypes";
 import { createEmptyInventoryProfile } from "./InventoryEngine";
 
@@ -13,6 +14,32 @@ export type InventoryProfileDecodeResult =
 
 function validId(value: unknown): value is string {
 	return typeIs(value, "string") && value.size() > 0 && value.size() <= MAX_INVENTORY_ID_LENGTH;
+}
+
+function validPickupId(value: unknown): value is string {
+	return typeIs(value, "string") && value.size() > 0 && value.size() <= MAX_WORLD_PICKUP_ID_LENGTH;
+}
+
+function readPickupIds(value: unknown): string[] | undefined {
+	if (!typeIs(value, "table")) return undefined;
+	const array = value as ReadonlyArray<unknown>;
+	const length = array.size();
+	if (length > MAX_CLAIMED_WORLD_PICKUPS) return undefined;
+	let entryCount = 0;
+	for (const [key] of pairs(value as Readonly<Record<number, unknown>>)) {
+		if (!typeIs(key, "number") || key < 1 || key > length || math.floor(key) !== key) return undefined;
+		entryCount += 1;
+	}
+	if (entryCount !== length) return undefined;
+
+	const output = new Array<string>();
+	const seen = new Set<string>();
+	for (const pickupId of array) {
+		if (!validPickupId(pickupId) || seen.has(pickupId)) return undefined;
+		output.push(pickupId);
+		seen.add(pickupId);
+	}
+	return output;
 }
 
 export function decodeInventoryProfile(
@@ -52,17 +79,9 @@ export function decodeInventoryProfile(
 		itemQuantities[itemId] = quantity;
 	}
 
-	const pickupIds = new Array<string>();
-	const seenPickupIds = new Set<string>();
-	for (const pickupId of record.claimedWorldPickupIds as ReadonlyArray<unknown>) {
-		if (!validId(pickupId) || seenPickupIds.has(pickupId)) {
-			return { ok: false, error: "Inventory profile contains an invalid or duplicate pickup ID." };
-		}
-		pickupIds.push(pickupId);
-		seenPickupIds.add(pickupId);
-		if (pickupIds.size() > MAX_CLAIMED_WORLD_PICKUPS) {
-			return { ok: false, error: "Inventory profile contains too many claimed pickups." };
-		}
+	const pickupIds = readPickupIds(record.claimedWorldPickupIds);
+	if (pickupIds === undefined) {
+		return { ok: false, error: "Inventory profile contains an invalid, sparse, or duplicate pickup ID list." };
 	}
 
 	return {

@@ -85,6 +85,27 @@ describe("player profile transactions", () => {
 		expect(documents[0].migrationStatus).toBe("complete");
 	});
 
+	it("renews a lease without rewriting the aggregate profile or revision", async () => {
+		const t = convexTest({ schema, modules });
+		await t.mutation(internal.playerProfiles.acquire, {
+			profileKey: "player:renew",
+			sessionId: "session:a",
+			serverId: "server:a",
+			leaseSeconds: 30,
+		});
+		vi.advanceTimersByTime(10_000);
+		const renewed = await t.mutation(internal.playerProfiles.renew, {
+			profileKey: "player:renew",
+			sessionId: "session:a",
+			leaseSeconds: 180,
+		});
+		expect(renewed).toMatchObject({ status: "ok", revision: 0 });
+		const documents = await t.run(async (ctx) => ctx.db.query("playerProfiles").collect());
+		expect(documents[0].revision).toBe(0);
+		expect(documents[0].questProfile).toEqual(questProfile);
+		expect(documents[0].inventoryProfile).toEqual(inventoryProfile);
+	});
+
 	it("atomically persists and releases the owning session", async () => {
 		const t = convexTest({ schema, modules });
 		await t.mutation(internal.playerProfiles.acquire, {

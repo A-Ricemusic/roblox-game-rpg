@@ -1,7 +1,10 @@
 export const INVENTORY_PROFILE_SCHEMA_VERSION = 1;
 export const MAX_INVENTORY_ITEM_TYPES = 200;
-export const MAX_CLAIMED_WORLD_PICKUPS = 5_000;
+export const MAX_CLAIMED_WORLD_PICKUPS = 1_024;
 export const MAX_INVENTORY_ID_LENGTH = 128;
+export const MAX_INVENTORY_STACK_QUANTITY = 1_000_000;
+export const WORLD_PICKUP_TRANSACTION_PREFIX = "world-pickup:";
+export const MAX_WORLD_PICKUP_ID_LENGTH = MAX_INVENTORY_ID_LENGTH - WORLD_PICKUP_TRANSACTION_PREFIX.size();
 
 export type InventoryItemId = string;
 export type InventoryItemCategory = "Material" | "Consumable" | "Quest" | "Miscellaneous";

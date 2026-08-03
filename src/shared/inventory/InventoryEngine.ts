@@ -6,6 +6,8 @@ import {
 	MAX_CLAIMED_WORLD_PICKUPS,
 	MAX_INVENTORY_ID_LENGTH,
 	MAX_INVENTORY_ITEM_TYPES,
+	MAX_WORLD_PICKUP_ID_LENGTH,
+	WORLD_PICKUP_TRANSACTION_PREFIX,
 	WorldPickupGrant,
 } from "./InventoryTypes";
 
@@ -34,7 +36,7 @@ export function claimWorldPickup(
 ): InventoryGrantResult {
 	if (
 		grant.pickupId.size() === 0 ||
-		grant.pickupId.size() > MAX_INVENTORY_ID_LENGTH ||
+		grant.pickupId.size() > MAX_WORLD_PICKUP_ID_LENGTH ||
 		grant.quantity < 1 ||
 		math.floor(grant.quantity) !== grant.quantity
 	) {
@@ -64,7 +66,7 @@ export function claimWorldPickup(
 		},
 		event: {
 			kind: "ItemGranted",
-			transactionId: `world-pickup:${grant.pickupId}`,
+			transactionId: `${WORLD_PICKUP_TRANSACTION_PREFIX}${grant.pickupId}`,
 			itemId: grant.itemId,
 			quantity: grant.quantity,
 			source: "WorldPickup",

@@ -27,6 +27,10 @@ export class DataStorePlayerProfileRepository implements PlayerProfileRepository
 		return ok ? { ok: true, value: undefined } : { ok: false, error: formatError(value), retryable: true };
 	}
 
+	public renew(_profileKey: string): RepositoryResult<void> {
+		return { ok: true, value: undefined };
+	}
+
 	public release(profileKey: string, profile: PlayerProfile): RepositoryResult<void> {
 		return this.save(profileKey, profile);
 	}

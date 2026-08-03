@@ -22,5 +22,7 @@ describe("InventoryDefinitionValidator", () => {
 		const issues = validateInventoryDefinitions([invalid, { ...invalid, displayName: "Again" }]);
 		expect(issues.some((issue) => issue.message.find("Duplicate")[0] !== undefined)).toBe(true);
 		expect(issues.some((issue) => issue.path === "items[0].maxStack")).toBe(true);
+		const nonFinite = validateInventoryDefinitions([{ ...invalid, id: "infinite", maxStack: math.huge }]);
+		expect(nonFinite.some((issue) => issue.path === "items[0].maxStack")).toBe(true);
 	});
 });

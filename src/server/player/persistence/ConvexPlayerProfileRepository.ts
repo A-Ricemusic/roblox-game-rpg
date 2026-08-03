@@ -6,6 +6,7 @@ import { QuestProfileRepository } from "server/quests/persistence/QuestProfileRe
 import { PlayerProfileRepository, RepositoryResult } from "./PlayerProfileRepository";
 
 const ACQUIRE_PATH = "/v1/player-profile/acquire";
+const RENEW_PATH = "/v1/player-profile/renew";
 const SAVE_PATH = "/v1/player-profile/save";
 const RELEASE_PATH = "/v1/player-profile/release";
 const ABANDON_PATH = "/v1/player-profile/abandon";
@@ -69,6 +70,7 @@ export class ConvexPlayerProfileRepository implements PlayerProfileRepository {
 	private readonly pendingSaves = new Map<string, PendingWrite>();
 	private readonly pendingReleases = new Map<string, PendingWrite>();
 	private readonly pendingAbandons = new Map<string, string>();
+	private readonly pendingLegacyMigrations = new Set<string>();
 	private readonly activeWrites = new Set<string>();
 
 	public constructor(
@@ -86,6 +88,7 @@ export class ConvexPlayerProfileRepository implements PlayerProfileRepository {
 
 	public load(profileKey: string): RepositoryResult<unknown> {
 		if (this.sessions.has(profileKey)) {
+			if (this.pendingLegacyMigrations.has(profileKey)) return this.loadLegacyQuestProfile(profileKey);
 			return {
 				ok: false,
 				error: `Profile '${profileKey}' is already acquired by this server.`,
@@ -112,15 +115,13 @@ export class ConvexPlayerProfileRepository implements PlayerProfileRepository {
 		}
 		const revision = readRevision(body);
 		if (body?.status !== "ok" || revision === undefined || !typeIs(body.migrationRequired, "boolean")) {
-			this.pendingAcquisitions.delete(profileKey);
-			return { ok: false, error: "Convex returned a malformed profile acquire response.", retryable: false };
+			return { ok: false, error: "Convex returned a malformed profile acquire response.", retryable: true };
 		}
 		if (body.migrationRequired && this.options.legacyQuestRepository !== undefined) {
-			const legacy = this.options.legacyQuestRepository.load(profileKey);
-			if (!legacy.ok) return legacy;
 			this.sessions.set(profileKey, { id: sessionId, revision });
 			this.pendingAcquisitions.delete(profileKey);
-			return legacy;
+			this.pendingLegacyMigrations.add(profileKey);
+			return this.loadLegacyQuestProfile(profileKey);
 		}
 		this.sessions.set(profileKey, { id: sessionId, revision });
 		this.pendingAcquisitions.delete(profileKey);
@@ -136,6 +137,45 @@ export class ConvexPlayerProfileRepository implements PlayerProfileRepository {
 		return this.write(profileKey, profile, false);
 	}
 
+	public renew(profileKey: string): RepositoryResult<void> {
+		if (this.activeWrites.has(profileKey)) {
+			return { ok: false, error: `Profile '${profileKey}' already has a write in progress.`, retryable: true };
+		}
+		const session = this.sessions.get(profileKey);
+		if (session === undefined) {
+			return { ok: false, error: `Profile '${profileKey}' has no Convex session.`, retryable: false };
+		}
+		this.activeWrites.add(profileKey);
+		try {
+			const response = this.transport.post(RENEW_PATH, {
+				profileKey,
+				sessionId: session.id,
+				leaseSeconds: this.options.leaseSeconds,
+			});
+			if (!response.ok) return response;
+			const body = asRecord(response.body);
+			if (response.statusCode === 409) {
+				this.clearSession(profileKey);
+				return {
+					ok: false,
+					error: `Profile '${profileKey}' ownership was lost during lease renewal.`,
+					retryable: false,
+					kind: "OwnershipLost",
+				};
+			}
+			const failure = requestFailure(response, "profile lease renewal");
+			if (failure !== undefined) return failure;
+			const revision = readRevision(body);
+			if (body?.status !== "ok" || revision === undefined) {
+				return { ok: false, error: "Convex returned a malformed lease renewal response.", retryable: true };
+			}
+			session.revision = revision;
+			return { ok: true, value: undefined };
+		} finally {
+			this.activeWrites.delete(profileKey);
+		}
+	}
+
 	public release(profileKey: string, profile: PlayerProfile): RepositoryResult<void> {
 		const pending = this.pendingSaves.get(profileKey);
 		if (pending !== undefined) {
@@ -146,11 +186,11 @@ export class ConvexPlayerProfileRepository implements PlayerProfileRepository {
 	}
 
 	public abandon(profileKey: string): RepositoryResult<void> {
-		const session = this.sessions.get(profileKey);
-		if (session === undefined) return { ok: true, value: undefined };
+		const sessionId = this.sessions.get(profileKey)?.id ?? this.pendingAcquisitions.get(profileKey);
+		if (sessionId === undefined) return { ok: true, value: undefined };
 		const operationId = this.pendingAbandons.get(profileKey) ?? this.options.createId();
 		this.pendingAbandons.set(profileKey, operationId);
-		const response = this.transport.post(ABANDON_PATH, { profileKey, sessionId: session.id, operationId });
+		const response = this.transport.post(ABANDON_PATH, { profileKey, sessionId, operationId });
 		if (!response.ok) return response;
 		const body = asRecord(response.body);
 		if (response.statusCode === 409 && body?.status === "session_conflict") {
@@ -160,7 +200,7 @@ export class ConvexPlayerProfileRepository implements PlayerProfileRepository {
 		const failure = requestFailure(response, "profile abandon");
 		if (failure !== undefined) return failure;
 		if (body?.status !== "ok" || readRevision(body) === undefined) {
-			return { ok: false, error: "Convex returned a malformed profile abandon response.", retryable: false };
+			return { ok: false, error: "Convex returned a malformed profile abandon response.", retryable: true };
 		}
 		this.clearSession(profileKey);
 		return { ok: true, value: undefined };
@@ -199,12 +239,29 @@ export class ConvexPlayerProfileRepository implements PlayerProfileRepository {
 		const responseBody = asRecord(response.body);
 		if (response.statusCode === 409) {
 			operations.delete(profileKey);
+			this.clearSession(profileKey);
 			if (responseBody?.status === "session_conflict") {
-				return { ok: false, error: `Profile '${profileKey}' session was superseded.`, retryable: false };
+				return {
+					ok: false,
+					error: `Profile '${profileKey}' session was superseded.`,
+					retryable: false,
+					kind: "OwnershipLost",
+				};
 			}
 			if (responseBody?.status === "revision_conflict") {
-				return { ok: false, error: `Profile '${profileKey}' revision is stale.`, retryable: false };
+				return {
+					ok: false,
+					error: `Profile '${profileKey}' revision is stale.`,
+					retryable: false,
+					kind: "OwnershipLost",
+				};
 			}
+			return {
+				ok: false,
+				error: `Profile '${profileKey}' ownership could not be verified.`,
+				retryable: false,
+				kind: "OwnershipLost",
+			};
 		}
 		const failure = requestFailure(response, release ? "profile release" : "profile save");
 		if (failure !== undefined) {
@@ -213,8 +270,7 @@ export class ConvexPlayerProfileRepository implements PlayerProfileRepository {
 		}
 		const revision = readRevision(responseBody);
 		if (responseBody?.status !== "ok" || revision === undefined) {
-			operations.delete(profileKey);
-			return { ok: false, error: "Convex returned a malformed profile write response.", retryable: false };
+			return { ok: false, error: "Convex returned a malformed profile write response.", retryable: true };
 		}
 		session.revision = revision;
 		operations.delete(profileKey);
@@ -228,5 +284,16 @@ export class ConvexPlayerProfileRepository implements PlayerProfileRepository {
 		this.pendingSaves.delete(profileKey);
 		this.pendingReleases.delete(profileKey);
 		this.pendingAbandons.delete(profileKey);
+		this.pendingLegacyMigrations.delete(profileKey);
+	}
+
+	private loadLegacyQuestProfile(profileKey: string): RepositoryResult<unknown> {
+		const repository = this.options.legacyQuestRepository;
+		if (repository === undefined) {
+			return { ok: false, error: "Legacy quest migration repository is unavailable.", retryable: false };
+		}
+		const result = repository.load(profileKey);
+		if (result.ok) this.pendingLegacyMigrations.delete(profileKey);
+		return result;
 	}
 }

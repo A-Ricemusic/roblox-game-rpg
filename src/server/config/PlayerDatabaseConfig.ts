@@ -58,7 +58,9 @@ export function createPlayerDatabaseRepository(
 		return new InMemoryPlayerProfileRepository();
 	}
 	if (selected === "DataStore") {
-		warn("[PlayerDatabase] Using the legacy Roblox DataStore backend.");
+		warn(
+			"[PlayerDatabase] Using an isolated Roblox DataStore player-profile backend. This is not a transparent rollback of live Convex data.",
+		);
 		return new DataStorePlayerProfileRepository();
 	}
 

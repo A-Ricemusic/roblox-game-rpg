@@ -88,26 +88,33 @@ server ID. A different live server receives HTTP 409 instead of loading the same
 profile. Autosaves run every 60 seconds and renew the lease. An expired lease may be
 taken over after a crashed server stops renewing it.
 
-Saves provide both the expected revision and an operation ID. Convex validates the
+Dirty saves provide both the expected revision and an operation ID. Convex validates the
 session, compares the revision, writes the profile, increments the revision, and
 records the operation atomically. Retrying after a lost HTTP response returns the
 same revision instead of applying the save twice. The operation marker lives on the
 player document, so autosaves do not create an unbounded transaction-log table.
+Once a profile is clean, autosave uses a small authenticated lease-renew request
+instead of retransmitting the full aggregate. Disconnect still performs one atomic
+full save-and-release.
 
 Player removal uses one atomic save-and-release mutation. `BindToClose` does the
 same for any profiles still loaded. If a release fails after bounded exponential
 retries, the lease expires naturally; another server cannot take over while the old
 server may still be writing.
 
-HTTP 429, network failures, and server errors are retryable. Authentication,
-malformed contracts, stale revisions, and superseded sessions are terminal. A
-profile that cannot be loaded safely is never replaced with empty data; the player
-is disconnected with a reconnect message.
+HTTP 429, network failures, server errors, and malformed bodies on otherwise
+successful writes are retryable with the same operation ID. Authentication and
+invalid requests are terminal. Stale revisions, superseded sessions, and unknown
+write conflicts mean ownership is lost: the loaded profile is quarantined against
+all further mutation and the player is disconnected. The unsaved in-memory snapshot
+is retained until server shutdown for diagnosis but is never logged automatically.
+A profile that cannot be loaded safely is never replaced with empty data.
 
 Roblox currently limits outbound external HTTP requests per game server. The
 one-minute autosave cadence remains comfortably below that limit for normal Roblox
-server sizes, but new database-backed subsystems should share the player profile
-save rather than creating independent polling loops. See
+server sizes, and clean profiles renew only lease metadata. New database-backed
+subsystems should share the player profile save rather than creating independent
+polling loops. See
 [Roblox HttpService](https://create.roblox.com/docs/cloud-services/http-service).
 
 ## Legacy Roblox DataStore migration
@@ -137,9 +144,11 @@ The server reads these DataModel attributes:
 - `MigratePlayerDataStore`: defaults to `false` in Studio and `true` on live
   servers; see the migration procedure above.
 
-`Memory` and `DataStore` are explicit development/rollback switches. Production
-does not silently fall back when Convex is unavailable because that would fork a
-player's data between databases.
+`Memory` and `DataStore` are explicit development or recovery tools. `DataStore` is
+not a transparent live rollback: it contains an isolated aggregate profile dataset
+unless an operator has deliberately imported current Convex data. Production does
+not silently fall back when Convex is unavailable because that would fork a player's
+data between databases.
 
 ## Development, tests, and deployment
 
@@ -179,14 +188,14 @@ place.
 
 - Convex dashboard: monitor function failures, mutation latency, database storage,
   and request volume for `grand-basilisk-273`.
-- Roblox server logs: alert on `[QuestRuntime] Failed to load/save` and
+- Roblox server logs: alert on `[PlayerRuntime] Failed to load/save` and
   `[PlayerDatabase]` warnings without logging request bodies or secrets.
 - Before schema changes: use additive optional fields, backfill, deploy readers,
   then make constraints stricter in a later deploy.
 - Backups: schedule Convex exports appropriate to the release cadence and test a
   restore into a non-production project.
-- Incident fallback: fix or roll back Convex first. Use the legacy DataStore backend
-  only as an intentional rollback while its data is still current; never alternate
+- Incident fallback: fix or roll back Convex first. Use the DataStore backend only
+  after explicitly verifying or importing current aggregate data; never alternate
   backends automatically.
 
 Primary Convex references: [HTTP Actions](https://docs.convex.dev/functions/http-actions),

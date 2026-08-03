@@ -38,11 +38,11 @@ WorldPickupRegistry ── validates and caches trusted metadata
 WorldPickupClaimService ── checks registration and player distance
         │
         ▼
-InventoryProfileService ── applies the pure, idempotent world-pickup grant
+InventoryPickupCoordinator ── applies the grant and publishes its quest fact
         │
-        ├── PlayerProfileService → aggregate Convex autosave/release
-        ├── InventoryRemoteService → sanitized GUI snapshot
-        └── InventoryQuestBridge → collectible quest event
+		├── InventoryProfileService → PlayerProfileService → aggregate save/release
+		├── InventoryRemoteService → sanitized GUI snapshot
+		└── InventoryQuestBridge → collectible quest event
 ```
 
 The client can only request a fresh snapshot. It cannot send item IDs, quantities,
@@ -62,6 +62,7 @@ server Instances and item definitions.
   rules.
 - `WorldPickupRegistry.ts`: live CollectionService cache and duplicate-ID rejection.
 - `WorldPickupClaimService.ts`: authoritative interaction boundary.
+- `InventoryPickupCoordinator.ts`: the public grant-and-quest orchestration boundary.
 - `InventoryProfileService.ts`: inventory facade over the aggregate player profile.
 - `InventoryQuestBridge.ts`: one-way publication of successful item grants to quests.
 - `InventoryRemoteService.ts`: rate-limited, read-only snapshots.
@@ -104,6 +105,10 @@ claimed its stable ID receives no second grant, including after reconnecting. Re
 an old pickup ID for a different object will therefore make it appear already claimed
 to existing players.
 
+`InventoryPickupId` may contain at most 115 characters. The inventory engine prefixes
+it with `world-pickup:` to produce the quest transaction ID, keeping that persisted
+ID within the shared 128-character limit.
+
 ## State and capacity rules
 
 `InventoryProfile` stores only:
@@ -112,13 +117,13 @@ to existing players.
 - a map of stable item ID to positive quantity;
 - stable world pickup IDs already claimed by this player.
 
-The current inventory supports 200 distinct item types and 5000 lifetime world
+The current inventory supports 200 distinct item types and 1024 lifetime world
 pickup IDs. Each definition supplies its own maximum quantity. Grants are
 all-or-nothing: a pickup that would exceed a stack or profile limit is rejected and
 its pickup ID is not consumed.
 
 These bounds protect Convex document size and Roblox/Convex validation cost. A world
-with more than 5000 permanent pickups will need a region-compressed collection model
+with more than 1024 permanent pickups will need a region-compressed collection model
 or a deliberately repeatable pickup policy rather than raising the limit blindly.
 
 ## Persistence and migration
@@ -135,6 +140,15 @@ quest DataStore migration also creates an empty inventory.
 
 If decoding or definition validation fails after acquisition, the server calls the
 authenticated abandon endpoint to release the session without overwriting data.
+
+Loaded profiles track whether either domain changed. Dirty autosaves write the whole
+aggregate once; clean autosaves send only a lightweight Convex lease renewal. Player
+disconnect always performs an atomic aggregate save-and-release.
+
+Item IDs and stack limits are persisted contracts. Never remove an item definition,
+rename its ID, or reduce its `maxStack` while saved profiles may still contain the old
+value. Ship a codec migration or a retained tombstone definition first, backfill the
+data, and only then tighten the registry.
 
 ## Extension rules
 

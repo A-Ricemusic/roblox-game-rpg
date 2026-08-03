@@ -6,9 +6,11 @@ import { INVENTORY_ITEM_DEFINITIONS } from "shared/inventory/InventoryDefinition
 import { assertValidInventoryDefinitions } from "shared/inventory/InventoryDefinitionValidator";
 
 import { CollectibleRegistry, RobloxCollectionTagSource } from "./collectibles/CollectibleRegistry";
+import { CollectiblePromptRouter } from "./collectibles/CollectiblePromptRouter";
 import { QuestCollectibleClaimService } from "./collectibles/QuestCollectibleClaimService";
 import { createPlayerDatabaseRepository } from "./config/PlayerDatabaseConfig";
 import { InventoryProfileService } from "./inventory/InventoryProfileService";
+import { InventoryPickupCoordinator } from "./inventory/InventoryPickupCoordinator";
 import { InventoryQuestBridge } from "./inventory/InventoryQuestBridge";
 import { getOrCreateInventoryRemote, InventoryRemoteService } from "./inventory/InventoryRemoteService";
 import { WorldPickupClaimService } from "./inventory/WorldPickupClaimService";
@@ -20,6 +22,7 @@ import { getOrCreateQuestRemote, QuestRemoteService } from "./quests/QuestRemote
 import { WeaponRuntime } from "./weapons/WeaponRuntime";
 
 const AUTOSAVE_INTERVAL_SECONDS = 60;
+const SHUTDOWN_LOAD_DRAIN_SECONDS = 10;
 
 function profileKey(player: Player): string {
 	return `player:${player.UserId}`;
@@ -37,12 +40,25 @@ const inventoryQuestBridge = new InventoryQuestBridge(profiles);
 const registry = new CollectibleRegistry(new RobloxCollectionTagSource());
 const claims = new QuestCollectibleClaimService(registry, profiles);
 const remotes = new QuestRemoteService(getOrCreateQuestRemote(), profiles, QUEST_DEFINITIONS);
-const pickupRegistry = new WorldPickupRegistry(new RobloxInventoryPickupTagSource());
+const inventoryItemIds = new Set<string>();
+for (const definition of INVENTORY_ITEM_DEFINITIONS) inventoryItemIds.add(definition.id);
+const pickupRegistry = new WorldPickupRegistry(new RobloxInventoryPickupTagSource(), (itemId) =>
+	inventoryItemIds.has(itemId),
+);
 const pickupClaims = new WorldPickupClaimService(pickupRegistry, inventories);
+const pickupCoordinator = new InventoryPickupCoordinator(pickupClaims, inventoryQuestBridge);
 const inventoryRemotes = new InventoryRemoteService(
 	getOrCreateInventoryRemote(),
 	inventories,
 	INVENTORY_ITEM_DEFINITIONS,
+);
+const collectiblePromptRouter = new CollectiblePromptRouter(
+	pickupRegistry,
+	pickupCoordinator,
+	inventoryRemotes,
+	remotes,
+	registry,
+	claims,
 );
 const weapons = new WeaponRuntime();
 const loadingProfileKeys = new Set<string>();
@@ -56,6 +72,17 @@ weapons.start();
 
 function loadPlayer(player: Player): void {
 	const key = profileKey(player);
+	if (playerProfiles.getQuarantineReason(key) !== undefined) {
+		player.Kick("Your player data session lost database ownership. Please reconnect.");
+		return;
+	}
+	if (playerProfiles.isClosing(key)) {
+		const release = playerProfiles.unload(key);
+		if (!release.ok) {
+			player.Kick("Your previous player session is still closing. Please reconnect.");
+			return;
+		}
+	}
 	if (playerProfiles.get(key) !== undefined) {
 		if (player.Parent === Players) {
 			remotes.sendSnapshot(player, key);
@@ -86,7 +113,12 @@ function savePlayer(player: Player, unload: boolean): void {
 	const key = profileKey(player);
 	if (playerProfiles.get(key) === undefined) return;
 	const result = unload ? playerProfiles.unload(key) : playerProfiles.save(key);
-	if (!result.ok) warn(`[PlayerRuntime] Failed to save ${key}: ${result.error}`);
+	if (!result.ok) {
+		warn(`[PlayerRuntime] Failed to save ${key}: ${result.error}`);
+		if (result.kind === "OwnershipLost") {
+			player.Kick("Your player data session lost database ownership. Please reconnect.");
+		}
+	}
 }
 
 const playerAddedConnection = Players.PlayerAdded.Connect(loadPlayer);
@@ -98,25 +130,7 @@ const playerRemovingConnection = Players.PlayerRemoving.Connect((player) => {
 for (const player of Players.GetPlayers()) task.spawn(() => loadPlayer(player));
 
 const promptConnection = ProximityPromptService.PromptTriggered.Connect((prompt, player) => {
-	const pickup = pickupRegistry.findRegisteredAncestor(prompt);
-	if (pickup !== undefined) {
-		const result = pickupClaims.claim(profileKey(player), player.Character, pickup);
-		if (result.ok) {
-			inventoryRemotes.sendSnapshot(player, profileKey(player));
-			const questResult = inventoryQuestBridge.itemGranted(profileKey(player), result.event);
-			if (questResult !== undefined && questResult.changes.size() > 0) {
-				remotes.sendSnapshot(player, profileKey(player));
-			}
-		}
-		return;
-	}
-	const collectible = registry.findRegisteredAncestor(prompt);
-	if (collectible === undefined) return;
-
-	const result = claims.claim(profileKey(player), player.Character, collectible);
-	if (result.ok && result.questResult.changes.size() > 0) {
-		remotes.sendSnapshot(player, profileKey(player));
-	}
+	collectiblePromptRouter.handle(prompt, player, player.Character, profileKey(player));
 });
 
 task.spawn(() => {
@@ -124,6 +138,11 @@ task.spawn(() => {
 		task.wait(AUTOSAVE_INTERVAL_SECONDS);
 		if (!closing) {
 			for (const player of Players.GetPlayers()) savePlayer(player, false);
+			for (const key of playerProfiles.getLoadedProfileKeys()) {
+				if (!playerProfiles.isClosing(key)) continue;
+				const result = playerProfiles.unload(key);
+				if (!result.ok) warn(`[PlayerRuntime] Failed to retry release ${key}: ${result.error}`);
+			}
 		}
 	}
 });
@@ -138,7 +157,13 @@ game.BindToClose(() => {
 	registry.stop();
 	pickupRegistry.stop();
 	weapons.stop();
-	for (const player of Players.GetPlayers()) {
-		if (playerProfiles.get(profileKey(player)) !== undefined) savePlayer(player, true);
+	const loadDrainDeadline = os.clock() + SHUTDOWN_LOAD_DRAIN_SECONDS;
+	while (loadingProfileKeys.size() > 0 && os.clock() < loadDrainDeadline) task.wait(0.05);
+	if (loadingProfileKeys.size() > 0) {
+		warn(`[PlayerRuntime] Shutdown timed out waiting for ${loadingProfileKeys.size()} profile load(s).`);
+	}
+	for (const key of playerProfiles.getLoadedProfileKeys()) {
+		const result = playerProfiles.unload(key);
+		if (!result.ok) warn(`[PlayerRuntime] Failed to release ${key} during shutdown: ${result.error}`);
 	}
 });

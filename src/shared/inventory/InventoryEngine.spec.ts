@@ -2,7 +2,7 @@ import { describe, expect, it } from "@rbxts/jest-globals";
 
 import { INVENTORY_ITEM_DEFINITIONS } from "./InventoryDefinitions";
 import { claimWorldPickup, createEmptyInventoryProfile } from "./InventoryEngine";
-import { MAX_CLAIMED_WORLD_PICKUPS } from "./InventoryTypes";
+import { MAX_CLAIMED_WORLD_PICKUPS, MAX_INVENTORY_ID_LENGTH, MAX_WORLD_PICKUP_ID_LENGTH } from "./InventoryTypes";
 
 describe("InventoryEngine", () => {
 	it("grants a known world pickup immutably and records its transaction", () => {
@@ -45,6 +45,24 @@ describe("InventoryEngine", () => {
 				pickupId: "invalid:1",
 				itemId: "sacred_olive_branch",
 				quantity: 0,
+			}),
+		).toEqual({ ok: false, reason: "InvalidGrant" });
+	});
+
+	it("keeps the longest valid pickup transaction within persisted quest ID bounds", () => {
+		const maximumPickupId = string.rep("p", MAX_WORLD_PICKUP_ID_LENGTH);
+		const accepted = claimWorldPickup(createEmptyInventoryProfile(), INVENTORY_ITEM_DEFINITIONS, {
+			pickupId: maximumPickupId,
+			itemId: "marble_fragment",
+			quantity: 1,
+		});
+		expect(accepted.ok).toBe(true);
+		if (accepted.ok) expect(accepted.event.transactionId.size()).toBe(MAX_INVENTORY_ID_LENGTH);
+		expect(
+			claimWorldPickup(createEmptyInventoryProfile(), INVENTORY_ITEM_DEFINITIONS, {
+				pickupId: `${maximumPickupId}x`,
+				itemId: "marble_fragment",
+				quantity: 1,
 			}),
 		).toEqual({ ok: false, reason: "InvalidGrant" });
 	});

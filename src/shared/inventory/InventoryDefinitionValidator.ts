@@ -1,4 +1,4 @@
-import { InventoryItemDefinition, MAX_INVENTORY_ID_LENGTH } from "./InventoryTypes";
+import { InventoryItemDefinition, MAX_INVENTORY_ID_LENGTH, MAX_INVENTORY_STACK_QUANTITY } from "./InventoryTypes";
 
 export interface InventoryDefinitionIssue {
 	readonly path: string;
@@ -26,8 +26,15 @@ export function validateInventoryDefinitions(
 		if (definition.description.size() === 0) {
 			issues.push({ path: `${path}.description`, message: "Description must not be empty." });
 		}
-		if (definition.maxStack < 1 || math.floor(definition.maxStack) !== definition.maxStack) {
-			issues.push({ path: `${path}.maxStack`, message: "Maximum stack must be a positive integer." });
+		if (
+			definition.maxStack < 1 ||
+			definition.maxStack > MAX_INVENTORY_STACK_QUANTITY ||
+			math.floor(definition.maxStack) !== definition.maxStack
+		) {
+			issues.push({
+				path: `${path}.maxStack`,
+				message: `Maximum stack must be an integer from 1 through ${MAX_INVENTORY_STACK_QUANTITY}.`,
+			});
 		}
 		if (definition.iconAssetId !== undefined && definition.iconAssetId.size() === 0) {
 			issues.push({ path: `${path}.iconAssetId`, message: "Icon asset ID must not be empty when provided." });

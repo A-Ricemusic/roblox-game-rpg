@@ -132,6 +132,25 @@ http.route({
 });
 
 http.route({
+	path: "/v1/player-profile/renew",
+	method: "POST",
+	handler: httpAction(async (ctx, request) => {
+		try {
+			if (!authorized(request)) return jsonResponse({ error: "unauthorized" }, 401);
+			const body = await readObject(request);
+			const result = await ctx.runMutation(internal.playerProfiles.renew, {
+				profileKey: readString(body, "profileKey"),
+				sessionId: readString(body, "sessionId"),
+				leaseSeconds: readNumber(body, "leaseSeconds"),
+			});
+			return jsonResponse(result, result.status === "ok" ? 200 : 409);
+		} catch (error: unknown) {
+			return requestErrorResponse("Renew", error);
+		}
+	}),
+});
+
+http.route({
 	path: "/v1/player-profile/release",
 	method: "POST",
 	handler: httpAction(async (ctx, request) => {

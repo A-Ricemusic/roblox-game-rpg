@@ -35,6 +35,10 @@ export class ResilientPlayerProfileStore {
 		return this.withRetry(() => this.repository.save(profileKey, profile));
 	}
 
+	public renew(profileKey: string): RepositoryResult<void> {
+		return this.withRetry(() => this.repository.renew(profileKey));
+	}
+
 	public release(profileKey: string, profile: PlayerProfile): RepositoryResult<void> {
 		return this.withRetry(() => this.repository.release(profileKey, profile));
 	}

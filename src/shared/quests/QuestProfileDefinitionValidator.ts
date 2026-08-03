@@ -23,6 +23,9 @@ export function validateQuestProfileAgainstDefinitions(
 			if (progress === undefined || progress.progress > objective.required) {
 				return `Active quest '${questId}' has invalid progress for objective '${objective.id}'.`;
 			}
+			if (progress.processedSourceIds.size() > progress.progress) {
+				return `Active quest '${questId}' has impossible source history for objective '${objective.id}'.`;
+			}
 		}
 		for (const [objectiveId] of pairs(state.objectiveProgress)) {
 			if (!expectedObjectives.has(objectiveId)) {

@@ -5,6 +5,7 @@ import {
 	INVENTORY_REMOTE_EVENT_NAME,
 	INVENTORY_REMOTES_FOLDER_NAME,
 } from "shared/inventory/InventoryRemoteProtocol";
+import { InventoryServerMessage } from "shared/inventory/InventoryTypes";
 
 import { InventoryHud } from "./InventoryHud";
 
@@ -57,6 +58,7 @@ export class RobloxInventoryToggleBinding implements InventoryToggleBinding {
 export class InventoryClientController {
 	private readonly connections = new Array<RBXScriptConnection>();
 	private started = false;
+	private latestSnapshot?: InventoryServerMessage;
 
 	public constructor(
 		private readonly hud: InventoryHud,
@@ -70,7 +72,9 @@ export class InventoryClientController {
 		this.connections.push(
 			this.remote.onMessage((payload) => {
 				const snapshot = parseInventoryServerMessage(payload);
-				if (snapshot !== undefined) this.hud.render(snapshot);
+				if (snapshot === undefined) return;
+				this.latestSnapshot = snapshot;
+				if (this.hud.isOpen()) this.hud.render(snapshot);
 			}),
 		);
 		this.connections.push(this.hud.getToggleButton().Activated.Connect(() => this.toggle(true)));
@@ -89,6 +93,9 @@ export class InventoryClientController {
 
 	public toggle(open: boolean): void {
 		this.hud.setOpen(open);
-		if (open) this.remote.requestSnapshot();
+		if (open) {
+			if (this.latestSnapshot !== undefined) this.hud.render(this.latestSnapshot);
+			this.remote.requestSnapshot();
+		}
 	}
 }

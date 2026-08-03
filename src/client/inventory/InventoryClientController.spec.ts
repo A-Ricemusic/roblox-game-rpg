@@ -88,4 +88,29 @@ describe("InventoryClientController", () => {
 		remote.emit({ kind: "Snapshot", items: [{ itemId: 123 }] });
 		expect(hud.getRoot().FindFirstChild("InventoryEmpty", true)).toBeDefined();
 	});
+
+	it("caches updates while closed and renders them only when opened", () => {
+		parent = new Instance("Folder");
+		hud = new InventoryHud(parent);
+		remote = new FakeRemote();
+		controller = new InventoryClientController(hud, remote, new FakeBinding());
+		controller.start();
+		remote.emit({
+			kind: "Snapshot",
+			occupiedSlots: 1,
+			maximumSlots: 200,
+			items: [
+				{
+					itemId: "marble_fragment",
+					displayName: "Marble Fragment",
+					description: "Ancient stone.",
+					category: "Material",
+					quantity: 2,
+				},
+			],
+		});
+		expect(hud.getRoot().FindFirstChild("InventoryItem_marble_fragment", true)).toBeUndefined();
+		controller.toggle(true);
+		expect(hud.getRoot().FindFirstChild("InventoryItem_marble_fragment", true)).toBeDefined();
+	});
 });

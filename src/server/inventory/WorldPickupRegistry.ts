@@ -28,6 +28,7 @@ export class WorldPickupRegistry {
 
 	public constructor(
 		private readonly source: InventoryPickupTagSource,
+		private readonly isKnownItemId: (itemId: string) => boolean = () => true,
 		private readonly reportInvalid: (instance: Instance, message: string) => void = (instance, message) =>
 			warn(`[WorldPickupRegistry] ${instance.GetFullName()}: ${message}`),
 	) {}
@@ -72,6 +73,10 @@ export class WorldPickupRegistry {
 			this.reportInvalid(instance, result.error);
 			return;
 		}
+		if (!this.isKnownItemId(result.metadata.itemId)) {
+			this.reportInvalid(instance, `Unknown inventory item ID '${result.metadata.itemId}'.`);
+			return;
+		}
 		const existing = this.instanceById.get(result.metadata.pickupId);
 		if (existing !== undefined && existing !== instance) {
 			this.reportInvalid(instance, `Duplicate pickup ID '${result.metadata.pickupId}'.`);
@@ -85,6 +90,14 @@ export class WorldPickupRegistry {
 		const metadata = this.byInstance.get(instance);
 		if (metadata === undefined) return;
 		this.byInstance.delete(instance);
-		if (this.instanceById.get(metadata.pickupId) === instance) this.instanceById.delete(metadata.pickupId);
+		if (this.instanceById.get(metadata.pickupId) !== instance) return;
+		this.instanceById.delete(metadata.pickupId);
+		for (const candidate of this.source.getTagged()) {
+			if (candidate === instance || this.byInstance.has(candidate)) continue;
+			const result = validateWorldPickupMetadata(candidate);
+			if (!result.ok || result.metadata.pickupId !== metadata.pickupId) continue;
+			this.register(candidate);
+			if (this.byInstance.has(candidate)) return;
+		}
 	}
 }

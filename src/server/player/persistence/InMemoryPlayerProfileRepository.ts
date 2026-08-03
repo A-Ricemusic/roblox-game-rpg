@@ -14,6 +14,10 @@ export class InMemoryPlayerProfileRepository implements PlayerProfileRepository 
 		return { ok: true, value: undefined };
 	}
 
+	public renew(_profileKey: string): RepositoryResult<void> {
+		return { ok: true, value: undefined };
+	}
+
 	public release(profileKey: string, profile: PlayerProfile): RepositoryResult<void> {
 		return this.save(profileKey, profile);
 	}

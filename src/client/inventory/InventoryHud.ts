@@ -100,7 +100,7 @@ export class InventoryHud {
 
 		const constraint = new Instance("UISizeConstraint");
 		constraint.Name = "ResponsiveInventorySize";
-		constraint.MinSize = new Vector2(300, 340);
+		constraint.MinSize = new Vector2(300, 280);
 		constraint.MaxSize = new Vector2(760, 560);
 		constraint.Parent = this.panel;
 

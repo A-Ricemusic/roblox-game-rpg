@@ -26,23 +26,27 @@ new set of scripts.
 
 ### Current collectible implementation
 
-The production core currently implements `CollectItem` objectives through tagged
-world objects:
+The production core currently implements `CollectItem` objectives through the
+inventory system's tagged world objects:
 
-- Tag the collectible Instance with `QuestCollectible` through CollectionService.
-- Set `QuestCollectibleId` to a globally stable, unique source ID.
-- Set `QuestItemId` to the item definition ID used by the objective.
-- Optionally set integer `QuestItemQuantity`; it defaults to `1` and is capped at
+- Define the item in `InventoryDefinitions.ts` and tag the collectible Instance with
+  `InventoryPickup` through CollectionService.
+- Set `InventoryPickupId` to a globally stable, unique source ID of at most 115
+  characters.
+- Set `InventoryItemId` to the inventory definition ID used by the objective.
+- Optionally set integer `InventoryItemQuantity`; it defaults to `1` and is capped at
   `1000`.
 - Use a `BasePart`, `Attachment`, or `Model` with a `PrimaryPart`, and place a
   `ProximityPrompt` below the tagged Instance.
 
-`CollectibleRegistry` listens for existing, added, and removed tags and rejects
-invalid metadata or duplicate stable IDs. `ProximityPromptService` provides the
-interacting player on the server. The claim service derives item ID and quantity
-from registered server Instances, checks the character distance, requires a loaded
-profile, and emits the event into `QuestEngine`. A client cannot submit progress or
-collectible metadata.
+`WorldPickupRegistry` listens for existing, added, and removed tags and rejects
+invalid metadata, undefined items, or duplicate stable IDs. `ProximityPromptService`
+provides the interacting player on the server. `InventoryPickupCoordinator` derives
+item ID and quantity from registered server Instances, checks character distance,
+grants inventory, and publishes the fact into `QuestEngine`. A client cannot submit
+progress, grants, or collectible metadata. The older `QuestCollectible` path remains
+only for compatibility with existing place content and should not be used for new
+items.
 
 Processed source IDs are persisted per objective, progress is capped, and a
 stage-completing event never spills into the next stage. The client receives

@@ -28,14 +28,13 @@ examples in the design document for shipped behavior.
 ## Runtime flow
 
 ```text
-Tagged world Instance + ProximityPrompt
+InventoryPickup-tagged world Instance + ProximityPrompt
         │ server PromptTriggered
         ▼
-CollectibleRegistry ── validates/caches trusted metadata
+WorldPickupRegistry ── validates/caches trusted item metadata
         │
         ▼
-QuestCollectibleClaimService ── validates registration, character, distance
-        │ CollectibleAcquiredEvent
+InventoryPickupCoordinator ── grants inventory, emits CollectibleAcquiredEvent
         ▼
 QuestProfileService ── owns each loaded player's immutable profile value
         │
@@ -82,11 +81,14 @@ originate from server-owned Instances and services.
 - `player/PlayerProfileService.ts` owns loaded aggregate profiles;
   `quests/QuestProfileService.ts` is the quest-domain facade.
 - `quests/QuestRemoteService.ts` rate-limits read-only snapshot requests.
-- `collectibles/CollectibleMetadata.ts` defines tags/attributes and distance rules.
-- `collectibles/CollectibleRegistry.ts` tracks valid tagged Instances and globally
-  unique collectible source IDs.
-- `collectibles/QuestCollectibleClaimService.ts` converts an authoritative world
-  interaction into a domain event.
+- `inventory/WorldPickupMetadata.ts` defines the canonical tag, attributes, and
+  distance rules for collectible items.
+- `inventory/WorldPickupRegistry.ts` tracks valid tagged Instances and globally
+  unique pickup source IDs.
+- `inventory/InventoryPickupCoordinator.ts` grants inventory and publishes the
+  resulting authoritative event through `InventoryQuestBridge`.
+- `collectibles/` retains the older quest-only `QuestCollectible` path for existing
+  place compatibility. Do not use it for newly authored item pickups.
 - `player/persistence/` contains aggregate Convex, DataStore, memory, retry, and fake
   adapters. `quests/persistence/` retains the legacy quest DataStore migration reader.
 - `config/PlayerDatabaseConfig.ts` selects isolated Studio versus production
@@ -134,6 +136,12 @@ nothing changes and a new object when progress changes. Repository retry logic r
 on this identity behavior when resolving an uncertain idempotent write before a newer
 profile is saved.
 
+Aggregate document budgets cap installed/tracked quests at 1024, simultaneous active
+quests at 64, stages per quest at 64, objectives per stage at 32, objective
+requirements at 2048, and total processed source IDs across active objectives at
+2048. Raise these only with a measured storage migration; they protect the shared
+quest/inventory Convex document, not just gameplay balance.
+
 ## Authoring a collectible quest
 
 1. Add the quest to `QuestDefinitions.ts` using stable lowercase snake-case IDs.
@@ -142,16 +150,21 @@ profile is saved.
 4. Set `autoStart: true` only when every new player should immediately receive it.
 5. Set `allowedSources: ["WorldTag"]` for the current collectible integration.
 6. Run the definition validator tests before placing world content.
-7. Tag each world Instance `QuestCollectible`.
+7. Define the item in `InventoryDefinitions.ts`, then tag each world Instance
+   `InventoryPickup`.
 8. Add these attributes:
 
-   - `QuestCollectibleId`: globally unique, stable source ID;
-   - `QuestItemId`: exact objective item ID;
-   - `QuestItemQuantity`: optional integer from 1 through 1000.
+   - `InventoryPickupId`: globally unique, stable source ID, at most 115 characters;
+   - `InventoryItemId`: exact inventory and objective item ID;
+   - `InventoryItemQuantity`: optional integer from 1 through 1000.
 
 9. Use a `BasePart`, `Attachment`, or `Model` with a `PrimaryPart`, and place a
    `ProximityPrompt` under the tagged Instance.
 10. Add reducer, registry/claim, view-model, protocol, and HUD tests as appropriate.
+
+The legacy `QuestCollectible` tag remains runtime-compatible for old place content,
+but it progresses quests without granting inventory. Migrate those objects to the
+canonical `InventoryPickup` contract instead of creating new legacy collectibles.
 
 Never reuse a collectible ID after moving or replacing an object if an existing
 player may already have processed that source. Display names and Instance paths are

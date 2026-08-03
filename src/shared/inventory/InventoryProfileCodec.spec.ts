@@ -37,4 +37,34 @@ describe("InventoryProfileCodec", () => {
 			).ok,
 		).toBe(false);
 	});
+
+	it("rejects dictionary-shaped and sparse pickup tables", () => {
+		expect(
+			decodeInventoryProfile(
+				{ schemaVersion: 1, itemQuantities: {}, claimedWorldPickupIds: { named: "pickup:1" } },
+				INVENTORY_ITEM_DEFINITIONS,
+			).ok,
+		).toBe(false);
+		const sparse = {} as Record<number, string>;
+		sparse[2] = "pickup:2";
+		expect(
+			decodeInventoryProfile(
+				{ schemaVersion: 1, itemQuantities: {}, claimedWorldPickupIds: sparse },
+				INVENTORY_ITEM_DEFINITIONS,
+			).ok,
+		).toBe(false);
+	});
+
+	it("rejects pickup IDs that Convex cannot persist", () => {
+		expect(
+			decodeInventoryProfile(
+				{
+					schemaVersion: 1,
+					itemQuantities: {},
+					claimedWorldPickupIds: [string.rep("p", 116)],
+				},
+				INVENTORY_ITEM_DEFINITIONS,
+			).ok,
+		).toBe(false);
+	});
 });

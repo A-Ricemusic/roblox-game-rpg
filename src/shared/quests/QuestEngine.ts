@@ -8,6 +8,7 @@ import {
 	QuestProgressChange,
 	QUEST_PROFILE_SCHEMA_VERSION,
 } from "./QuestTypes";
+import { MAX_PROCESSED_SOURCES_PER_OBJECTIVE, MAX_TOTAL_PROCESSED_SOURCE_IDS } from "./QuestProfileLimits";
 
 export function createEmptyQuestProfile(): QuestProfile {
 	return {
@@ -78,6 +79,7 @@ function applyEventToQuest(
 	state: ActiveQuestState,
 	event: CollectibleAcquiredEvent,
 	now: number,
+	maximumNewSourceIds: number,
 ): { readonly state: ActiveQuestState; readonly changes: QuestProgressChange[] } {
 	if (state.status !== "Active" || event.quantity < 1 || math.floor(event.quantity) !== event.quantity) {
 		return { state, changes: [] };
@@ -88,6 +90,7 @@ function applyEventToQuest(
 	const changes = new Array<QuestProgressChange>();
 
 	for (const objective of stage.objectives) {
+		if (changes.size() >= maximumNewSourceIds) break;
 		if (
 			objective.kind !== "CollectItem" ||
 			objective.itemId !== event.itemId ||
@@ -100,6 +103,7 @@ function applyEventToQuest(
 		if (current.progress >= objective.required || current.processedSourceIds.includes(event.sourceId)) {
 			continue;
 		}
+		if (current.processedSourceIds.size() >= MAX_PROCESSED_SOURCES_PER_OBJECTIVE) continue;
 
 		const progress = math.min(objective.required, current.progress + event.quantity);
 		nextProgress[objective.id] = {
@@ -158,6 +162,13 @@ export function applyCollectibleAcquired(
 	const activeQuests: Record<string, ActiveQuestState> = {};
 	const completedQuestIds = [...profile.completedQuestIds];
 	const changes = new Array<QuestProgressChange>();
+	let processedSourceCount = 0;
+	for (const [_questId, state] of pairs(profile.activeQuests)) {
+		for (const [_objectiveId, progress] of pairs(state.objectiveProgress)) {
+			processedSourceCount += progress.processedSourceIds.size();
+		}
+	}
+	let remainingSourceIds = math.max(0, MAX_TOTAL_PROCESSED_SOURCE_IDS - processedSourceCount);
 
 	for (const [questId, state] of pairs(profile.activeQuests)) {
 		const definition = definitionsById.get(questId);
@@ -166,7 +177,7 @@ export function applyCollectibleAcquired(
 			continue;
 		}
 
-		const result = applyEventToQuest(definition, state, event, now);
+		const result = applyEventToQuest(definition, state, event, now, remainingSourceIds);
 		if (result.changes.size() === 0) {
 			activeQuests[questId] = state;
 			continue;
@@ -175,6 +186,7 @@ export function applyCollectibleAcquired(
 		for (const change of result.changes) {
 			changes.push(change);
 		}
+		remainingSourceIds -= result.changes.size();
 		if (result.state.status === "Completed") {
 			if (!completedQuestIds.includes(questId)) {
 				completedQuestIds.push(questId);

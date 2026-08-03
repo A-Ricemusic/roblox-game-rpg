@@ -102,6 +102,35 @@ describe("quest profile semantic validation", () => {
 			"duplicate source ID",
 		);
 	});
+
+	it("rejects quest histories that exceed aggregate document budgets", () => {
+		assertRejected(
+			{
+				schemaVersion: 1,
+				activeQuests: {},
+				completedQuestIds: Array.from({ length: 1_025 }, (_, index) => `quest:${index}`),
+			},
+			"too many tracked quests",
+		);
+		assertRejected(
+			{
+				schemaVersion: 1,
+				activeQuests: {
+					quest: {
+						...activeQuest(),
+						objectiveProgress: {
+							objective: {
+								progress: 2_049,
+								processedSourceIds: Array.from({ length: 2_049 }, (_, index) => `source:${index}`),
+							},
+						},
+					},
+				},
+				completedQuestIds: [],
+			},
+			"too many processed source IDs",
+		);
+	});
 });
 
 describe("inventory profile semantic validation", () => {
@@ -131,5 +160,22 @@ describe("inventory profile semantic validation", () => {
 			}),
 		).toThrow("duplicated");
 		expect(() => assertValidInventoryProfile(undefined as unknown as InventoryProfile)).toThrow("schema version 1");
+	});
+
+	it("enforces the Roblox pickup ID and history bounds", () => {
+		expect(() =>
+			assertValidInventoryProfile({
+				schemaVersion: 1,
+				itemQuantities: {},
+				claimedWorldPickupIds: ["p".repeat(116)],
+			}),
+		).toThrow("115");
+		expect(() =>
+			assertValidInventoryProfile({
+				schemaVersion: 1,
+				itemQuantities: {},
+				claimedWorldPickupIds: Array.from({ length: 1_025 }, (_, index) => `pickup:${index}`),
+			}),
+		).toThrow("too many claimed world pickups");
 	});
 });

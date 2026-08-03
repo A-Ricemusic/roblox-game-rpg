@@ -160,6 +160,33 @@ export const save = internalMutation({
 	},
 });
 
+export const renew = internalMutation({
+	args: {
+		profileKey: v.string(),
+		sessionId: v.string(),
+		leaseSeconds: v.number(),
+	},
+	returns: writeResultValidator,
+	handler: async (ctx, args) => {
+		assertIdentifier(args.profileKey, "profileKey", MAX_PROFILE_KEY_LENGTH);
+		assertIdentifier(args.sessionId, "sessionId");
+		const now = Date.now();
+		const expiresAt = now + leaseDurationMs(args.leaseSeconds);
+		const existing = await ctx.db
+			.query("playerProfiles")
+			.withIndex("by_profile_key", (query) => query.eq("profileKey", args.profileKey))
+			.unique();
+		if (existing === null || existing.session?.id !== args.sessionId) {
+			return { status: "session_conflict" as const };
+		}
+		await ctx.db.patch(existing._id, {
+			session: { ...existing.session, expiresAt },
+			updatedAt: now,
+		});
+		return { status: "ok" as const, revision: existing.revision, leaseExpiresAt: expiresAt };
+	},
+});
+
 export const release = internalMutation({
 	args: {
 		profileKey: v.string(),

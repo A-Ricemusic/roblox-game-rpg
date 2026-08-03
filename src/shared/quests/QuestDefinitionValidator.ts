@@ -1,4 +1,11 @@
 import { QuestDefinition } from "./QuestTypes";
+import {
+	MAX_ACTIVE_QUESTS,
+	MAX_OBJECTIVES_PER_STAGE,
+	MAX_OBJECTIVE_REQUIREMENT,
+	MAX_QUEST_DEFINITIONS,
+	MAX_QUEST_STAGES,
+} from "./QuestProfileLimits";
 
 export interface QuestDefinitionIssue {
 	readonly path: string;
@@ -6,7 +13,6 @@ export interface QuestDefinitionIssue {
 }
 
 const MAX_ID_LENGTH = 128;
-const MAX_OBJECTIVE_REQUIREMENT = 1_000_000;
 
 function validateId(id: string, path: string, issues: QuestDefinitionIssue[]): void {
 	if (id.size() === 0) {
@@ -19,6 +25,10 @@ function validateId(id: string, path: string, issues: QuestDefinitionIssue[]): v
 export function validateQuestDefinitions(definitions: ReadonlyArray<QuestDefinition>): QuestDefinitionIssue[] {
 	const issues = new Array<QuestDefinitionIssue>();
 	const questIds = new Set<string>();
+	if (definitions.size() > MAX_QUEST_DEFINITIONS) {
+		issues.push({ path: "quests", message: `At most ${MAX_QUEST_DEFINITIONS} quest definitions are supported.` });
+	}
+	let autoStartCount = 0;
 
 	for (let questIndex = 0; questIndex < definitions.size(); questIndex++) {
 		const quest = definitions[questIndex];
@@ -29,6 +39,15 @@ export function validateQuestDefinitions(definitions: ReadonlyArray<QuestDefinit
 			issues.push({ path: `${questPath}.id`, message: `Duplicate quest ID '${quest.id}'.` });
 		}
 		questIds.add(quest.id);
+		if (quest.autoStart) {
+			autoStartCount += 1;
+			if (autoStartCount > MAX_ACTIVE_QUESTS) {
+				issues.push({
+					path: `${questPath}.autoStart`,
+					message: `At most ${MAX_ACTIVE_QUESTS} quests may auto-start.`,
+				});
+			}
+		}
 
 		if (quest.version < 1 || math.floor(quest.version) !== quest.version) {
 			issues.push({ path: `${questPath}.version`, message: "Version must be a positive integer." });
@@ -43,6 +62,12 @@ export function validateQuestDefinitions(definitions: ReadonlyArray<QuestDefinit
 
 		if (quest.stages.size() === 0) {
 			issues.push({ path: `${questPath}.stages`, message: "A quest must contain at least one stage." });
+		}
+		if (quest.stages.size() > MAX_QUEST_STAGES) {
+			issues.push({
+				path: `${questPath}.stages`,
+				message: `A quest may contain at most ${MAX_QUEST_STAGES} stages.`,
+			});
 		}
 
 		const stageIds = new Set<string>();
@@ -65,6 +90,12 @@ export function validateQuestDefinitions(definitions: ReadonlyArray<QuestDefinit
 				issues.push({
 					path: `${stagePath}.objectives`,
 					message: "A stage must contain at least one objective.",
+				});
+			}
+			if (stage.objectives.size() > MAX_OBJECTIVES_PER_STAGE) {
+				issues.push({
+					path: `${stagePath}.objectives`,
+					message: `A stage may contain at most ${MAX_OBJECTIVES_PER_STAGE} objectives.`,
 				});
 			}
 

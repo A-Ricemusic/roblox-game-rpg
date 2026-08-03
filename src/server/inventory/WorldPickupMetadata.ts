@@ -1,3 +1,5 @@
+import { MAX_INVENTORY_ID_LENGTH, MAX_WORLD_PICKUP_ID_LENGTH } from "shared/inventory/InventoryTypes";
+
 export const INVENTORY_PICKUP_TAG = "InventoryPickup";
 
 export const INVENTORY_PICKUP_ATTRIBUTES = {
@@ -15,12 +17,11 @@ export interface WorldPickupMetadata {
 export type WorldPickupValidationResult =
 	{ readonly ok: true; readonly metadata: WorldPickupMetadata } | { readonly ok: false; readonly error: string };
 
-const MAX_ID_LENGTH = 128;
 const MAX_PICKUP_QUANTITY = 1_000;
 
-function readId(instance: Instance, attribute: string): string | undefined {
+function readId(instance: Instance, attribute: string, maximumLength: number): string | undefined {
 	const value = instance.GetAttribute(attribute);
-	return typeIs(value, "string") && value.size() > 0 && value.size() <= MAX_ID_LENGTH ? value : undefined;
+	return typeIs(value, "string") && value.size() > 0 && value.size() <= maximumLength ? value : undefined;
 }
 
 export function getWorldPickupPosition(instance: Instance): Vector3 | undefined {
@@ -34,11 +35,11 @@ export function validateWorldPickupMetadata(instance: Instance): WorldPickupVali
 	if (getWorldPickupPosition(instance) === undefined) {
 		return { ok: false, error: "Tagged pickup must be a BasePart, Attachment, or Model with a PrimaryPart." };
 	}
-	const pickupId = readId(instance, INVENTORY_PICKUP_ATTRIBUTES.pickupId);
+	const pickupId = readId(instance, INVENTORY_PICKUP_ATTRIBUTES.pickupId, MAX_WORLD_PICKUP_ID_LENGTH);
 	if (pickupId === undefined) {
 		return { ok: false, error: `Missing or invalid '${INVENTORY_PICKUP_ATTRIBUTES.pickupId}' attribute.` };
 	}
-	const itemId = readId(instance, INVENTORY_PICKUP_ATTRIBUTES.itemId);
+	const itemId = readId(instance, INVENTORY_PICKUP_ATTRIBUTES.itemId, MAX_INVENTORY_ID_LENGTH);
 	if (itemId === undefined) {
 		return { ok: false, error: `Missing or invalid '${INVENTORY_PICKUP_ATTRIBUTES.itemId}' attribute.` };
 	}

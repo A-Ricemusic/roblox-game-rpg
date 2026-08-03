@@ -39,13 +39,23 @@ export type InventoryProfile = Infer<typeof inventoryProfileValidator>;
 export type PlayerProfile = Infer<typeof playerProfileValidator>;
 
 const MAX_PERSISTED_ID_LENGTH = 128;
+const MAX_WORLD_PICKUP_ID_LENGTH = 115;
+const MAX_TRACKED_QUESTS = 1_024;
+const MAX_ACTIVE_QUESTS = 64;
+const MAX_OBJECTIVES_PER_STAGE = 32;
+const MAX_PROCESSED_SOURCES_PER_OBJECTIVE = 2_048;
+const MAX_TOTAL_PROCESSED_SOURCE_IDS = 2_048;
 const MAX_INVENTORY_ITEM_TYPES = 200;
-const MAX_CLAIMED_WORLD_PICKUPS = 5_000;
+const MAX_CLAIMED_WORLD_PICKUPS = 1_024;
 const MAX_INVENTORY_STACK_QUANTITY = 1_000_000;
 
-function assertPersistedId(value: unknown, label: string): asserts value is string {
-	if (typeof value !== "string" || value.length === 0 || value.length > MAX_PERSISTED_ID_LENGTH) {
-		throw new Error(`${label} must contain between 1 and ${MAX_PERSISTED_ID_LENGTH} characters.`);
+function assertPersistedId(
+	value: unknown,
+	label: string,
+	maximumLength = MAX_PERSISTED_ID_LENGTH,
+): asserts value is string {
+	if (typeof value !== "string" || value.length === 0 || value.length > maximumLength) {
+		throw new Error(`${label} must contain between 1 and ${maximumLength} characters.`);
 	}
 }
 
@@ -72,8 +82,15 @@ export function assertValidQuestProfile(profile: QuestProfile): void {
 		if (completedQuestIds.has(questId)) throw new Error(`Completed quest '${questId}' is duplicated.`);
 		completedQuestIds.add(questId);
 	}
+	const activeQuestEntries = Object.entries(profile.activeQuests);
+	if (activeQuestEntries.length > MAX_ACTIVE_QUESTS)
+		throw new Error("Quest profile contains too many active quests.");
+	if (activeQuestEntries.length + completedQuestIds.size > MAX_TRACKED_QUESTS) {
+		throw new Error("Quest profile contains too many tracked quests.");
+	}
+	let processedSourceCount = 0;
 
-	for (const [questId, quest] of Object.entries(profile.activeQuests)) {
+	for (const [questId, quest] of activeQuestEntries) {
 		assertPersistedId(questId, "active quest ID");
 		if (quest.questId !== questId) throw new Error(`Active quest '${questId}' has a mismatched questId.`);
 		if (quest.status !== "Active") throw new Error(`Active quest '${questId}' has an invalid status.`);
@@ -83,10 +100,21 @@ export function assertValidQuestProfile(profile: QuestProfile): void {
 		assertNonNegativeInteger(quest.startedAt, `Active quest '${questId}' startedAt`);
 		assertNonNegativeInteger(quest.updatedAt, `Active quest '${questId}' updatedAt`);
 
-		for (const [objectiveId, objective] of Object.entries(quest.objectiveProgress)) {
+		const objectiveEntries = Object.entries(quest.objectiveProgress);
+		if (objectiveEntries.length > MAX_OBJECTIVES_PER_STAGE) {
+			throw new Error(`Active quest '${questId}' contains too many objectives.`);
+		}
+		for (const [objectiveId, objective] of objectiveEntries) {
 			assertPersistedId(objectiveId, `Active quest '${questId}' objective ID`);
 			assertNonNegativeInteger(objective.progress, `Objective '${objectiveId}' progress`);
 			const sourceIds = new Set<string>();
+			if (objective.processedSourceIds.length > MAX_PROCESSED_SOURCES_PER_OBJECTIVE) {
+				throw new Error(`Objective '${objectiveId}' contains too many processed source IDs.`);
+			}
+			processedSourceCount += objective.processedSourceIds.length;
+			if (processedSourceCount > MAX_TOTAL_PROCESSED_SOURCE_IDS) {
+				throw new Error("Quest profile contains too many total processed source IDs.");
+			}
 			for (const sourceId of objective.processedSourceIds) {
 				assertPersistedId(sourceId, `Objective '${objectiveId}' source ID`);
 				if (sourceIds.has(sourceId)) throw new Error(`Objective '${objectiveId}' has a duplicate source ID.`);
@@ -119,7 +147,7 @@ export function assertValidInventoryProfile(profile: InventoryProfile): void {
 	}
 	const pickupIds = new Set<string>();
 	for (const pickupId of profile.claimedWorldPickupIds) {
-		assertPersistedId(pickupId, "claimed world pickup ID");
+		assertPersistedId(pickupId, "claimed world pickup ID", MAX_WORLD_PICKUP_ID_LENGTH);
 		if (pickupIds.has(pickupId)) throw new Error(`Claimed world pickup '${pickupId}' is duplicated.`);
 		pickupIds.add(pickupId);
 	}
