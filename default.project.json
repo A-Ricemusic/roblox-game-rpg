@@ -1,87 +1,156 @@
 {
-  "name": "RobloxGame",
-  "tree": {
-    "$className": "DataModel",
+	"name": "RobloxGame",
+	"globIgnorePaths": [
+		"out/**/*.spec.luau",
+		"out/**/*.test.luau",
+		"node_modules/@rbxts/jest*/**",
+		"node_modules/@rbxts/emittery/**",
+		"node_modules/@rbxts/pretty-format/**",
+		"node_modules/@rbxts-js/**",
+		"**/package.json",
+		"**/tsconfig.json"
+	],
+	"tree": {
+		"$className": "DataModel",
 
-    "ReplicatedStorage": {
-      "$className": "ReplicatedStorage",
-      "rbxts_include": {
-        "$path": "include",
-        "node_modules": {
-          "$className": "Folder",
-          "@rbxts": {
-            "$path": "node_modules/@rbxts"
-          },
-          "@rbxts-js": {
-            "$path": "node_modules/@rbxts-js"
-          }
-        }
-      },
-      "TS": {
-        "$path": "out/shared"
-      }
-    },
+		"ReplicatedStorage": {
+			"$className": "ReplicatedStorage",
+			"rbxts_include": {
+				"$path": "include",
+				"node_modules": {
+					"$className": "Folder",
+					"@rbxts": {
+						"$path": "node_modules/@rbxts"
+					},
+					"@rbxts-js": {
+						"$path": "node_modules/@rbxts-js"
+					}
+				}
+			},
+			"TS": {
+				"$path": "out/shared"
+			}
+		},
 
-    "ServerScriptService": {
-      "$className": "ServerScriptService",
-      "TS": {
-        "$path": "out/server"
-      }
-    },
+		"ServerScriptService": {
+			"$className": "ServerScriptService",
+			"TS": {
+				"$path": "out/server"
+			}
+		},
 
-    "StarterPlayer": {
-      "StarterPlayerScripts": {
-        "$className": "StarterPlayerScripts",
-        "TS": {
-          "$path": "out/client"
-        }
-      }
-    },
+		"StarterPlayer": {
+			"StarterPlayerScripts": {
+				"$className": "StarterPlayerScripts",
+				"TS": {
+					"$path": "out/client"
+				}
+			}
+		},
 
-    "Workspace": {
-      "$properties": {
-        "FilteringEnabled": true
-      },
-      "Baseplate": {
-        "$className": "Part",
-        "$properties": {
-          "Anchored": true,
-          "Color": [
-            0.38823,
-            0.37254,
-            0.38823
-          ],
-          "Locked": true,
-          "Position": [
-            0,
-            -10,
-            0
-          ],
-          "Size": [
-            512,
-            20,
-            512
-          ]
-        }
-      }
-    },
-    "Lighting": {
-      "$properties": {
-        "Ambient": [
-          0,
-          0,
-          0
-        ],
-        "Brightness": 2,
-        "GlobalShadows": true,
-        "Outlines": false,
-        "Technology": "Voxel"
-      }
-    },
-    "SoundService": {
-      "$properties": {
-        "RespectFilteringEnabled": true
-      }
-    }
-  }
+		"Workspace": {
+			"$properties": {
+				"FilteringEnabled": true
+			},
+			"Baseplate": {
+				"$className": "Part",
+				"$properties": {
+					"Anchored": true,
+					"Color": [0.38823, 0.37254, 0.38823],
+					"Locked": true,
+					"Position": [0, -10, 0],
+					"Size": [512, 20, 512]
+				}
+			},
+			"SacredOliveBranch01": {
+				"$className": "Part",
+				"$properties": {
+					"Tags": ["QuestCollectible"],
+					"Attributes": {
+						"QuestCollectibleId": { "String": "sacred-olive-branch:grove:01" },
+						"QuestItemId": { "String": "sacred_olive_branch" },
+						"QuestItemQuantity": { "Float64": 1 }
+					},
+					"Anchored": true,
+					"Color": [0.41176, 0.50196, 0.23922],
+					"Position": [-8, 1.5, 0],
+					"Shape": "Ball",
+					"Size": [2, 2, 2]
+				},
+				"CollectPrompt": {
+					"$className": "ProximityPrompt",
+					"$properties": {
+						"ActionText": "Gather",
+						"HoldDuration": 0.25,
+						"MaxActivationDistance": 10,
+						"ObjectText": "Sacred Olive Branch"
+					}
+				}
+			},
+			"SacredOliveBranch02": {
+				"$className": "Part",
+				"$properties": {
+					"Tags": ["QuestCollectible"],
+					"Attributes": {
+						"QuestCollectibleId": { "String": "sacred-olive-branch:grove:02" },
+						"QuestItemId": { "String": "sacred_olive_branch" },
+						"QuestItemQuantity": { "Float64": 1 }
+					},
+					"Anchored": true,
+					"Color": [0.41176, 0.50196, 0.23922],
+					"Position": [0, 1.5, 0],
+					"Shape": "Ball",
+					"Size": [2, 2, 2]
+				},
+				"CollectPrompt": {
+					"$className": "ProximityPrompt",
+					"$properties": {
+						"ActionText": "Gather",
+						"HoldDuration": 0.25,
+						"MaxActivationDistance": 10,
+						"ObjectText": "Sacred Olive Branch"
+					}
+				}
+			},
+			"SacredOliveBranch03": {
+				"$className": "Part",
+				"$properties": {
+					"Tags": ["QuestCollectible"],
+					"Attributes": {
+						"QuestCollectibleId": { "String": "sacred-olive-branch:grove:03" },
+						"QuestItemId": { "String": "sacred_olive_branch" },
+						"QuestItemQuantity": { "Float64": 1 }
+					},
+					"Anchored": true,
+					"Color": [0.41176, 0.50196, 0.23922],
+					"Position": [8, 1.5, 0],
+					"Shape": "Ball",
+					"Size": [2, 2, 2]
+				},
+				"CollectPrompt": {
+					"$className": "ProximityPrompt",
+					"$properties": {
+						"ActionText": "Gather",
+						"HoldDuration": 0.25,
+						"MaxActivationDistance": 10,
+						"ObjectText": "Sacred Olive Branch"
+					}
+				}
+			}
+		},
+		"Lighting": {
+			"$properties": {
+				"Ambient": [0, 0, 0],
+				"Brightness": 2,
+				"GlobalShadows": true,
+				"Outlines": false,
+				"Technology": "Voxel"
+			}
+		},
+		"SoundService": {
+			"$properties": {
+				"RespectFilteringEnabled": true
+			}
+		}
+	}
 }
