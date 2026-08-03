@@ -8,3 +8,5 @@ coverage
 *.rbxm
 *.rbxmx
 docs/*.html
+docs/*.md
+package-lock.json

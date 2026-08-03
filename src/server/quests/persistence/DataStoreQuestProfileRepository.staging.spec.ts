@@ -19,10 +19,9 @@ describeStaging("Quest DataStore staging integration", () => {
 		if (!saved.ok) return;
 
 		const loaded = repository.load(profileKey);
+		const removed = repository.removeForStaging(profileKey);
 		expect(loaded.ok).toBe(true);
 		if (loaded.ok) expect(loaded.value).toEqual(profile);
-
-		const removed = repository.removeForStaging(profileKey);
 		expect(removed.ok).toBe(true);
 	});
 });

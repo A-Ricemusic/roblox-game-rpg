@@ -1,0 +1,51 @@
+name: CI
+
+on:
+    pull_request:
+    push:
+        branches: [master]
+
+permissions:
+    contents: read
+
+jobs:
+    quality-and-runtime-tests:
+        runs-on: ubuntu-latest
+        timeout-minutes: 20
+        env:
+            ROBLOX_OPEN_CLOUD_API_KEY: ${{ secrets.ROBLOX_OPEN_CLOUD_API_KEY }}
+            ROBLOX_UNIVERSE_ID: ${{ secrets.ROBLOX_UNIVERSE_ID }}
+            ROBLOX_PLACE_ID: ${{ secrets.ROBLOX_PLACE_ID }}
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 24.12.0
+                  cache: npm
+
+            - name: Install project dependencies
+              run: npm ci
+
+            - name: Install Rokit
+              run: cargo install rokit --locked --version 1.2.0
+
+            - name: Install pinned Roblox tools
+              run: |
+                  rokit install --no-trust-check
+                  echo "$HOME/.rokit/bin" >> "$GITHUB_PATH"
+
+            - name: Verify formatting, dependencies, and strict types
+              run: |
+                  npm run format:check
+                  npm audit --audit-level=high
+                  npm run build
+
+            - name: Require the dedicated Roblox test-place credentials
+              run: |
+                  test -n "$ROBLOX_OPEN_CLOUD_API_KEY"
+                  test -n "$ROBLOX_UNIVERSE_ID"
+                  test -n "$ROBLOX_PLACE_ID"
+
+            - name: Run Roblox tests with enforced coverage
+              run: npm run test:coverage

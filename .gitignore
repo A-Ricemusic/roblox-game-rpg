@@ -15,5 +15,6 @@
 /.jest-roblox/
 /coverage/
 /test.rbxl
+/test-staging.rbxl
 /game-output.log
 /jest-output.json

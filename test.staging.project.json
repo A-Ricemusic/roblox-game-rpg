@@ -1,5 +1,5 @@
 {
-	"name": "RobloxGameTests",
+	"name": "RobloxGameStagingTests",
 	"globIgnorePaths": [
 		"out/client/main.client.luau",
 		"out/server/main.server.luau",
@@ -8,6 +8,11 @@
 	],
 	"tree": {
 		"$className": "DataModel",
+		"$properties": {
+			"Attributes": {
+				"RunQuestDataStoreStagingTests": { "Bool": true }
+			}
+		},
 		"ReplicatedStorage": {
 			"$className": "ReplicatedStorage",
 			"rbxts_include": {

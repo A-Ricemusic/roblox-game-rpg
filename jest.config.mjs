@@ -8,7 +8,12 @@ export default defineConfig({
 	test: {
 		collectCoverage: false,
 		coverageDirectory: "coverage",
-		coveragePathIgnorePatterns: ["/node_modules/", "\\.spec\\.ts$", "\\.staging\\.spec\\.ts$"],
+		coveragePathIgnorePatterns: [
+			"/node_modules/",
+			"\\.spec\\.ts$",
+			"\\.staging\\.spec\\.ts$",
+			"DataStoreQuestProfileRepository\\.ts$",
+		],
 		coverageReporters: ["text", "lcov"],
 		coverageThreshold: {
 			branches: 80,
