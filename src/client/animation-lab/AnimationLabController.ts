@@ -1,7 +1,7 @@
-import { CaptureService, Players, RunService, Workspace } from "@rbxts/services";
+import { CaptureService, Players, RunService, UserInputService, Workspace } from "@rbxts/services";
 import { evaluateMotionTrajectory, TrajectorySample } from "shared/animation-lab/MotionDiagnostics";
 import { LightComboStep } from "shared/weapons/LightCombo";
-import { getLightComboMotionDuration } from "shared/weapons/SwordMotion";
+import { getLightComboActiveWindow, getLightComboMotionDuration } from "shared/weapons/SwordMotion";
 import { EQUIPPED_WEAPON_NAME } from "shared/weapons/WeaponConstants";
 import { ProceduralSwordAnimator } from "../weapons/ProceduralSwordAnimator";
 import { TrajectoryVisualizer } from "./TrajectoryVisualizer";
@@ -82,36 +82,77 @@ export class AnimationLabController {
 	private playing = true;
 	private autoCycle = true;
 	private started = false;
+	private active = false;
 	private captureTaken = false;
 
 	public start(): void {
-		if (this.started || !RunService.IsStudio() || Workspace.GetAttribute("AnimationLabDisabled") === true) return;
+		if (this.started || !RunService.IsStudio()) return;
 		this.started = true;
-		task.spawn(() => this.attachToCharacter());
 		this.connections.push(
-			Players.LocalPlayer.CharacterAdded.Connect(() => task.spawn(() => this.attachToCharacter())),
+			Players.LocalPlayer.CharacterAdded.Connect(() => {
+				if (this.active) task.spawn(() => this.attachToCharacter());
+			}),
+			UserInputService.InputBegan.Connect((input, gameProcessed) => {
+				if (gameProcessed) return;
+				const isShortcut =
+					input.KeyCode === Enum.KeyCode.F8 ||
+					(input.KeyCode === Enum.KeyCode.L &&
+						(UserInputService.IsKeyDown(Enum.KeyCode.LeftShift) ||
+							UserInputService.IsKeyDown(Enum.KeyCode.RightShift)));
+				if (isShortcut) this.toggle();
+			}),
 		);
+		if (Workspace.GetAttribute("AnimationLabEnabled") === true) this.activate();
+		else print("[AnimationLab] Disabled for beta play. Press F8 or Shift+L in Studio to enable it.");
+	}
+
+	public toggle(): void {
+		if (this.active) this.deactivate();
+		else this.activate();
 	}
 
 	public destroy(): void {
 		if (!this.started) return;
 		this.started = false;
+		this.deactivate();
 		for (const connection of this.connections) connection.Disconnect();
 		this.connections.clear();
-		this.renderConnection?.Disconnect();
-		this.renderConnection = undefined;
 		this.animator.destroy();
 		this.trajectory.destroy();
+	}
+
+	private activate(): void {
+		if (this.active || !this.started) return;
+		this.active = true;
+		task.spawn(() => this.attachToCharacter());
+	}
+
+	private deactivate(): void {
+		if (!this.active) return;
+		this.active = false;
+		this.renderConnection?.Disconnect();
+		this.renderConnection = undefined;
+		this.trajectory.clear();
 		this.gui?.Destroy();
+		this.gui = undefined;
 		for (const [gui, wasEnabled] of this.hiddenGuis) {
 			if (gui.Parent !== undefined) gui.Enabled = wasEnabled;
 		}
 		this.hiddenGuis.clear();
 		this.restoreCharacter();
+		const camera = Workspace.CurrentCamera;
+		const humanoid = Players.LocalPlayer.Character?.FindFirstChildOfClass("Humanoid");
+		if (camera !== undefined) {
+			camera.CameraType = Enum.CameraType.Custom;
+			if (humanoid !== undefined) camera.CameraSubject = humanoid;
+		}
+		print("[AnimationLab] Disabled; normal beta play restored.");
 	}
 
 	private attachToCharacter(): void {
+		if (!this.active) return;
 		const character = Players.LocalPlayer.Character ?? Players.LocalPlayer.CharacterAdded.Wait()[0];
+		if (!this.active) return;
 		const root = character.WaitForChild("HumanoidRootPart", 10);
 		const humanoid = character.FindFirstChildOfClass("Humanoid");
 		if (root === undefined || !root.IsA("BasePart") || humanoid === undefined) return;
@@ -178,7 +219,13 @@ export class AnimationLabController {
 		this.animator.previewLightSwing(character, this.step, this.elapsedSeconds);
 		if (!this.captureTaken && this.elapsedSeconds >= duration * 0.55) this.captureStrikeFrame();
 		const tip = this.tip;
-		if (tip !== undefined && this.playing && this.elapsedSeconds < duration) {
+		const [activeStart, activeEnd] = getLightComboActiveWindow(this.step);
+		if (
+			tip !== undefined &&
+			this.playing &&
+			this.elapsedSeconds >= activeStart &&
+			this.elapsedSeconds <= activeEnd
+		) {
 			this.trajectory.add(tip.WorldPosition);
 			this.samples.push({
 				elapsedSeconds: this.elapsedSeconds,
@@ -296,9 +343,13 @@ export class AnimationLabController {
 		const panelCorner = new Instance("UICorner");
 		panelCorner.CornerRadius = new UDim(0, 10);
 		panelCorner.Parent = panel;
+		const panelScale = new Instance("UIScale");
+		panelScale.Scale = 0.74;
+		panelScale.Parent = panel;
 
 		this.titleLabel = makeLabel(panel, "ANIMATION LAB", new UDim2(1, -30, 0, 28), UDim2.fromOffset(16, 10), 18);
 		this.titleLabel.Font = Enum.Font.GothamBold;
+		makeButton(panel, "Exit Lab", UDim2.fromOffset(590, 10), 74).Activated.Connect(() => this.deactivate());
 		this.timeLabel = makeLabel(panel, "", new UDim2(1, -30, 0, 22), UDim2.fromOffset(16, 38), 13);
 
 		const track = new Instance("Frame");
@@ -368,6 +419,9 @@ export class AnimationLabController {
 		const captureCorner = new Instance("UICorner");
 		captureCorner.CornerRadius = new UDim(0, 10);
 		captureCorner.Parent = captureCard;
+		const captureScale = new Instance("UIScale");
+		captureScale.Scale = 0.74;
+		captureScale.Parent = captureCard;
 		const image = new Instance("ImageLabel");
 		image.BackgroundColor3 = Color3.fromRGB(10, 12, 18);
 		image.BorderSizePixel = 0;

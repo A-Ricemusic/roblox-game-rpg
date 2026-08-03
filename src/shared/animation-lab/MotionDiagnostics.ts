@@ -50,9 +50,24 @@ export function evaluateMotionTrajectory(
 	if (step === 1 || step === 2) {
 		if (horizontalTravel < 1.75) issues.push("Diagonal slash lacks horizontal travel");
 		if (verticalTravel < 1.75) issues.push("Diagonal slash lacks vertical travel");
+		const first = localTips[0];
+		const last = localTips[localTips.size() - 1];
+		if (first !== undefined && last !== undefined) {
+			if (step === 1) {
+				if (first.X - last.X < 1.5) issues.push("Downward slash does not travel right to left");
+				if (first.Y - last.Y < 1.5) issues.push("Downward slash does not lose enough height");
+			} else {
+				if (last.X - first.X < 1.5) issues.push("Rising slash does not travel left to right");
+				if (last.Y - first.Y < 1.5) issues.push("Rising slash does not gain enough height");
+			}
+		}
 	} else if (step === 3) {
 		if (forwardTravel < 1.5) issues.push("Thrust lacks forward extension");
 		if (horizontalTravel > 2.25) issues.push("Thrust wanders too far sideways");
+		const first = localTips[0];
+		const last = localTips[localTips.size() - 1];
+		if (first !== undefined && last !== undefined && first.Z - last.Z < 1.5)
+			issues.push("Thrust tip does not finish forward of its launch point");
 	} else {
 		if (horizontalTravel < 3) issues.push("Spin slash radius is too small");
 	}

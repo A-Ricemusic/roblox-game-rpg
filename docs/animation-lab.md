@@ -1,13 +1,18 @@
 # Animation Lab
 
-Status: development-only lab integrated into the current Rojo place
+Status: opt-in development lab integrated into the current Rojo place
 
 ## Purpose
 
 The Animation Lab makes procedural combat motion observable and measurable without
-building a separate place or changing the published world. It starts automatically
-only when `RunService:IsStudio()` is true. Set the Workspace attribute
-`AnimationLabDisabled` to `true` when ordinary Studio playtesting is required.
+building a separate place or changing the published world. It is available only when
+`RunService:IsStudio()` is true and remains **off by default**, so ordinary Play starts
+normal beta testing without anchoring the character or changing the camera.
+
+Press **F8** or **Shift+L** during a Studio Play session to toggle the lab. The
+**Exit Lab** button also restores normal movement, camera behavior, and gameplay UI.
+For a persistent local opt-in, set the Workspace attribute `AnimationLabEnabled` to
+`true`; never enable that attribute for a published build.
 
 The lab uses the real local R15 character, equipped Hoplite Sword, avatar joint
 adapter, and `SwordMotion` definitions. It does not maintain a separate preview-only
@@ -15,7 +20,7 @@ animation implementation.
 
 ## Autonomous review loop
 
-After Play begins, the lab:
+After the lab is enabled, it:
 
 1. Waits for the real starter sword and its `Tip` attachment.
 2. Anchors the character and selects a standardized three-quarter camera.
@@ -35,6 +40,7 @@ review card and does not attempt to bypass the platform permission model.
 The bottom panel provides:
 
 - individual Attack 1–4 selection;
+- an **Exit Lab** control that immediately returns to beta play;
 - automatic cycling, play/pause, restart, and next attack;
 - deterministic 0%, 25%, 50%, 75%, and 100% pose inspection;
 - front, side, rear, and three-quarter cameras;
@@ -69,6 +75,12 @@ This also demonstrates an intentional limitation of the first thresholds: attack
 2, and 4 can pass broad travel checks while still being visually wrong. Their next
 iteration should add directional phase checks and target-driven hand/tip paths before
 the poses themselves are replaced.
+
+The first optimization pass subsequently added wrist and ankle drivers, explicit
+active strike windows, forward-hemisphere shoulder poses, and per-segment easing.
+Directional checks now reject a downward cut that does not move right-to-left and
+lose height, a rising cut that does not reverse both directions, and a thrust whose
+tip does not finish forward of its launch point.
 
 ## Code map
 
@@ -105,8 +117,8 @@ npm run animation-lab:capture
 ```
 
 The command verifies that Roblox Studio already exists, focuses that process, restarts
-its current test session through Studio's **Test** menu, waits briefly for initialization, and
-captures 48 downscaled frames at four frames per second. Frames are written beneath
+its current test session through Studio's **Test** menu, enables the otherwise dormant
+lab with **Shift+L**, and captures 48 downscaled frames at four frames per second. Frames are written beneath
 `artifacts/animation-lab/<timestamp>/` for visual review. It never launches Studio.
 
 Optional environment variables customize the run:

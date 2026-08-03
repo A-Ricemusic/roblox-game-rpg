@@ -22,6 +22,10 @@ osascript \
 	-e 'tell application id "com.Roblox.RobloxStudio" to activate' \
 	-e 'tell application "System Events" to tell process "RobloxStudio" to click menu item "Test" of menu 1 of menu item "Start Test Session" of menu "Test" of menu bar item "Test" of menu bar 1'
 sleep 2
+osascript \
+	-e 'tell application id "com.Roblox.RobloxStudio" to activate' \
+	-e 'tell application "System Events" to keystroke "l" using {shift down}'
+sleep 0.05
 
 studio_window_id=$(osascript -l JavaScript -e '
 	ObjC.import("Cocoa");
@@ -47,7 +51,19 @@ fi
 integer frame=1
 while (( frame <= frame_count )); do
 	frame_name=$(printf 'frame-%04d.png' "${frame}")
-	/usr/sbin/screencapture -x -l"${studio_window_id}" "${session_dir}/${frame_name}"
+	integer attempt=1
+	while ! /usr/sbin/screencapture -x -l"${studio_window_id}" "${session_dir}/${frame_name}"; do
+		if (( attempt >= 3 )); then
+			print -u2 "Skipping ${frame_name}; Studio was temporarily unavailable for capture."
+			break
+		fi
+		(( attempt += 1 ))
+		sleep 0.1
+	done
+	if [[ ! -f "${session_dir}/${frame_name}" ]]; then
+		(( frame += 1 ))
+		continue
+	fi
 	/usr/bin/sips -Z 1440 "${session_dir}/${frame_name}" >/dev/null
 	sleep "${frame_interval}"
 	(( frame += 1 ))

@@ -53,6 +53,12 @@ const JOINT_SPECS: ReadonlyArray<JointSpec> = [
 		connectedPartNames: new Set(["RightLowerArm"]),
 	},
 	{
+		poseJoint: "rightWrist",
+		preferredParentName: "RightHand",
+		jointNames: new Set(["RightWrist", "Right Wrist"]),
+		connectedPartNames: new Set(["RightHand"]),
+	},
+	{
 		poseJoint: "leftShoulder",
 		preferredParentName: "LeftUpperArm",
 		jointNames: new Set(["LeftShoulder", "Left Shoulder"]),
@@ -63,6 +69,12 @@ const JOINT_SPECS: ReadonlyArray<JointSpec> = [
 		preferredParentName: "LeftLowerArm",
 		jointNames: new Set(["LeftElbow", "Left Elbow"]),
 		connectedPartNames: new Set(["LeftLowerArm"]),
+	},
+	{
+		poseJoint: "leftWrist",
+		preferredParentName: "LeftHand",
+		jointNames: new Set(["LeftWrist", "Left Wrist"]),
+		connectedPartNames: new Set(["LeftHand"]),
 	},
 	{
 		poseJoint: "rightHip",
@@ -77,6 +89,12 @@ const JOINT_SPECS: ReadonlyArray<JointSpec> = [
 		connectedPartNames: new Set(["RightLowerLeg"]),
 	},
 	{
+		poseJoint: "rightAnkle",
+		preferredParentName: "RightFoot",
+		jointNames: new Set(["RightAnkle", "Right Ankle"]),
+		connectedPartNames: new Set(["RightFoot"]),
+	},
+	{
 		poseJoint: "leftHip",
 		preferredParentName: "LeftUpperLeg",
 		jointNames: new Set(["LeftHip", "Left Hip"]),
@@ -87,6 +105,12 @@ const JOINT_SPECS: ReadonlyArray<JointSpec> = [
 		preferredParentName: "LeftLowerLeg",
 		jointNames: new Set(["LeftKnee", "Left Knee"]),
 		connectedPartNames: new Set(["LeftLowerLeg"]),
+	},
+	{
+		poseJoint: "leftAnkle",
+		preferredParentName: "LeftFoot",
+		jointNames: new Set(["LeftAnkle", "Left Ankle"]),
+		connectedPartNames: new Set(["LeftFoot"]),
 	},
 ];
 

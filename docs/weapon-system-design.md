@@ -657,6 +657,12 @@ move. The client predicts immediately for responsive input while the server owns
 combo step and broadcasts the accepted result. Combo state resets after 1.1 seconds,
 on character respawn, and stale unacknowledged client predictions expire.
 
+The optimized pose rig also drives both wrists and ankles. Wrist control is required
+to place the blade in the thrust and spinning-cut planes instead of merely moving a
+vertical sword with the shoulder. Every attack defines a smaller active strike window
+inside its full anticipation/recovery duration; trajectory diagnostics and future hit
+detection should evaluate that window rather than treating recovery as damage motion.
+
 The current slice still does **not** deal damage and does not yet implement charged
 heavy attacks or blocking. Those remain the next combat milestones.
 

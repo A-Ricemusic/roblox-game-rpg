@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
-import { getLightComboMotionDuration, sampleLightComboMotion } from "./SwordMotion";
+import { getLightComboActiveWindow, getLightComboMotionDuration, sampleLightComboMotion } from "./SwordMotion";
 
 describe("four-hit sword combo motion", () => {
 	it("starts and ends every step in a neutral pose", () => {
@@ -35,6 +35,15 @@ describe("four-hit sword combo motion", () => {
 			expect(sampleLightComboMotion(step, sampleTime)).toEqual(sampleLightComboMotion(step, sampleTime));
 			expect(sampleLightComboMotion(step, -0.01)).toBeUndefined();
 			expect(sampleLightComboMotion(step, getLightComboMotionDuration(step) + 0.01)).toBeUndefined();
+		}
+	});
+
+	it("defines a bounded active strike window for every step", () => {
+		for (const step of [1, 2, 3, 4] as const) {
+			const [start, finish] = getLightComboActiveWindow(step);
+			expect(start).toBeGreaterThan(0);
+			expect(finish).toBeGreaterThan(start);
+			expect(finish).toBeLessThan(getLightComboMotionDuration(step));
 		}
 	});
 });
