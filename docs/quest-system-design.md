@@ -1,6 +1,6 @@
 # Quest System Design
 
-Status: initial design for the first playable quest slice  
+Status: production architecture with an initial collectible quest delivery
 Theme: mythic ancient Greece / demigod odyssey  
 Implementation direction: TypeScript with `roblox-ts`
 
@@ -24,7 +24,38 @@ The first system must support:
 The architecture should make a new quest primarily a **data-authoring task**, not a
 new set of scripts.
 
-## 2. Recommended MVP decisions
+### Current collectible implementation
+
+The production core currently implements `CollectItem` objectives through tagged
+world objects:
+
+- Tag the collectible Instance with `QuestCollectible` through CollectionService.
+- Set `QuestCollectibleId` to a globally stable, unique source ID.
+- Set `QuestItemId` to the item definition ID used by the objective.
+- Optionally set integer `QuestItemQuantity`; it defaults to `1` and is capped at
+  `1000`.
+- Use a `BasePart`, `Attachment`, or `Model` with a `PrimaryPart`, and place a
+  `ProximityPrompt` below the tagged Instance.
+
+`CollectibleRegistry` listens for existing, added, and removed tags and rejects
+invalid metadata or duplicate stable IDs. `ProximityPromptService` provides the
+interacting player on the server. The claim service derives item ID and quantity
+from registered server Instances, checks the character distance, requires a loaded
+profile, and emits the event into `QuestEngine`. A client cannot submit progress or
+collectible metadata.
+
+Processed source IDs are persisted per objective, progress is capped, and a
+stage-completing event never spills into the next stage. The client receives
+display-only quest snapshots and renders the current stage in `QuestHud`. Three
+tagged sacred olive branch examples in `default.project.json` make **The First
+Harvest** playable in an unpublished development place.
+
+Future inventory grants, enemy drops, NPC conversations, and combat events should
+normalize into the same authoritative engine boundary. They must not bypass
+definition validation, profile ownership, deduplication, or server-to-client
+view-model construction.
+
+## 2. Production baseline decisions
 
 These are the default rules for the initial implementation:
 
@@ -74,9 +105,9 @@ Completed + rewards granted
 
 ### Locked
 
-The player cannot accept the quest. For the MVP, a quest is locked only when its
-prerequisite quest has not been completed. Level, reputation, divine favor, and world
-state requirements can be added later.
+The player cannot accept the quest. In the initial production delivery, a quest is
+locked only when its prerequisite quest has not been completed. Level, reputation,
+divine favor, and world state requirements can be added later.
 
 ### Available
 
@@ -121,10 +152,11 @@ The authoritative combat/enemy system emits exactly one defeated event when an e
 dies. Quest code never watches `Humanoid.Died` independently and never trusts a
 client kill notification.
 
-Recommended MVP credit rule: every nearby player who made meaningful, recent damage
-contributions receives credit. This is fairer than last-hit-only credit and works
-when two players fight one enemy. The exact contribution window, minimum damage, and
-distance should live in configuration. Party-wide credit can be added later.
+Recommended baseline credit rule: every nearby player who made meaningful, recent
+damage contributions receives credit. This is fairer than last-hit-only credit and
+works when two players fight one enemy. The exact contribution window, minimum
+damage, and distance should live in configuration. Party-wide credit can be added
+later.
 
 To require different enemies, put several eliminate objectives in the same stage:
 
@@ -142,12 +174,12 @@ Fields:
 - Which server-authoritative acquisition sources are eligible.
 - Player-facing description.
 
-For the MVP, “collect” means cumulative acquisition while that objective is active.
-The Inventory/Loot service publishes an `ItemGranted` event with a unique transaction
-ID, item ID, quantity, and source. Eligible sources might include an enemy drop,
-world pickup, or quest grant. Moving an existing item between inventory slots,
-dropping and picking up a transferred item, or a client claim must not manufacture
-new progress.
+In the initial production delivery, “collect” means cumulative acquisition while
+that objective is active. The Inventory/Loot service publishes an `ItemGranted`
+event with a unique transaction ID, item ID, quantity, and source. Eligible sources
+might include an enemy drop, world pickup, or quest grant. Moving an existing item
+between inventory slots, dropping and picking up a transferred item, or a client
+claim must not manufacture new progress.
 
 The counter is capped at the requirement and does not decrease if the player later
 uses the item. A future `PossessItem` objective can require the player to currently
@@ -253,8 +285,9 @@ only to improve display text; saves and cross-system references depend on them.
 
 ## 6. Example Greek quest
 
-The first vertical slice can be **The Broken Offering**. It exercises every MVP
-objective without requiring a boss, branching dialogue, or unusual world logic.
+The first production slice can be **The Broken Offering**. It exercises every
+baseline objective without requiring a boss, branching dialogue, or unusual world
+logic.
 
 Premise: thieves desecrated a roadside shrine and carried fragments of its sacred
 relief into a sealed ruin. Priestess Thaleia asks the player to investigate. The
@@ -582,9 +615,10 @@ Persistence rules:
 - If an active definition is missing or incompatible, quarantine it for migration;
   do not crash the whole player profile.
 
-Abandoning may be included in the MVP if needed. The recommended initial rule is that
-abandoning deletes active progress and accepting again starts from Stage 1. Quest-only
-items should be removed or safely orphaned according to InventoryService policy.
+Abandoning may be included in the initial delivery if needed. The recommended rule
+is that abandoning deletes active progress and accepting again starts from Stage 1.
+Quest-only items should be removed or safely orphaned according to InventoryService
+policy.
 
 ## 14. Networking and security
 
@@ -622,7 +656,7 @@ Send presentation facts, not server-only definitions or internal event data.
 
 ## 15. Initial UI and experience
 
-The MVP UI should include:
+The production UI should include:
 
 - A dialogue quest offer with Accept and Decline.
 - A compact pinned tracker showing the quest title and current objectives.
