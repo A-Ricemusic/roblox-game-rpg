@@ -12,13 +12,6 @@
 	],
 	"tree": {
 		"$className": "DataModel",
-		"$properties": {
-			"Attributes": {
-				"ConvexSecretName": { "String": "CONVEX_PLAYER_DATABASE_KEY" },
-				"ConvexSiteUrl": { "String": "https://grand-basilisk-273.convex.site" },
-				"MigratePlayerDataStore": { "Bool": true }
-			}
-		},
 
 		"ReplicatedStorage": {
 			"$className": "ReplicatedStorage",

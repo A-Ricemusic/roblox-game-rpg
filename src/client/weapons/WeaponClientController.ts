@@ -1,8 +1,13 @@
 import { ContextActionService, Players, ReplicatedStorage, UserInputService, Workspace } from "@rbxts/services";
 import { MAX_WEAPON_ACTION_ID, parseLightSwingAccepted } from "shared/weapons/WeaponActionProtocol";
 import {
+	advanceLightCombo,
+	LIGHT_COMBO_MINIMUM_INTERVALS,
+	LightComboState,
+	LightComboStep,
+} from "shared/weapons/LightCombo";
+import {
 	EQUIPPED_WEAPON_NAME,
-	LIGHT_SWING_COOLDOWN_SECONDS,
 	WEAPON_ACTION_REMOTE_NAME,
 	WEAPON_REMOTE_FOLDER_NAME,
 } from "shared/weapons/WeaponConstants";
@@ -10,13 +15,22 @@ import { ProceduralSwordAnimator } from "./ProceduralSwordAnimator";
 
 const LIGHT_SWING_ACTION = "HopliteSwordLightSwing";
 const COMBAT_INPUT_PRIORITY = 2_500;
+const PREDICTION_EXPIRY_SECONDS = 2.5;
+
+interface PendingPrediction {
+	readonly step: LightComboStep;
+	readonly sentAt: number;
+}
 
 export class WeaponClientController {
 	private animator?: ProceduralSwordAnimator;
 	private remoteConnection?: RBXScriptConnection;
+	private characterConnection?: RBXScriptConnection;
 	private actionRemote?: RemoteEvent;
 	private nextActionId = 0;
 	private nextLocalSwingAt = 0;
+	private predictedCombo?: LightComboState;
+	private readonly predictedStepsByActionId = new Map<number, PendingPrediction>();
 	private started = false;
 
 	public start(): void {
@@ -33,9 +47,10 @@ export class WeaponClientController {
 		}
 		this.actionRemote = remoteCandidate;
 		this.animator = new ProceduralSwordAnimator();
+		this.characterConnection = Players.LocalPlayer.CharacterAdded.Connect(() => this.resetPrediction());
 		this.remoteConnection = remoteCandidate.OnClientEvent.Connect(
-			(kind: unknown, actor: unknown, actionId: unknown, startedAt: unknown) =>
-				this.handleAcceptedSwing(kind, actor, actionId, startedAt),
+			(kind: unknown, actor: unknown, actionId: unknown, startedAt: unknown, comboStep: unknown) =>
+				this.handleAcceptedSwing(kind, actor, actionId, startedAt, comboStep),
 		);
 
 		ContextActionService.BindActionAtPriority(
@@ -66,16 +81,19 @@ export class WeaponClientController {
 		ContextActionService.UnbindAction(LIGHT_SWING_ACTION);
 		this.remoteConnection?.Disconnect();
 		this.remoteConnection = undefined;
+		this.characterConnection?.Disconnect();
+		this.characterConnection = undefined;
 		this.actionRemote = undefined;
 		this.animator?.destroy();
 		this.animator = undefined;
-		this.nextLocalSwingAt = 0;
+		this.resetPrediction();
 	}
 
 	private requestLightSwing(): boolean {
 		const character = Players.LocalPlayer.Character;
 		const humanoid = character?.FindFirstChildOfClass("Humanoid");
 		const now = Workspace.GetServerTimeNow();
+		this.expireStalePredictions(now);
 		if (
 			character === undefined ||
 			humanoid === undefined ||
@@ -86,24 +104,58 @@ export class WeaponClientController {
 			return false;
 		}
 
-		if (this.animator?.playLightSwing(character, now) !== true) {
+		const advance = advanceLightCombo(this.predictedCombo, now);
+		if (this.animator?.playLightSwing(character, now, advance.step) !== true) {
 			return false;
 		}
-		this.nextLocalSwingAt = now + LIGHT_SWING_COOLDOWN_SECONDS;
+		this.predictedCombo = advance.state;
+		this.nextLocalSwingAt = now + LIGHT_COMBO_MINIMUM_INTERVALS[advance.step];
 		this.nextActionId = this.nextActionId >= MAX_WEAPON_ACTION_ID ? 0 : this.nextActionId + 1;
+		this.predictedStepsByActionId.set(this.nextActionId, { step: advance.step, sentAt: now });
 		this.actionRemote?.FireServer({ kind: "LightSwing", actionId: this.nextActionId });
 		return true;
 	}
 
-	private handleAcceptedSwing(kind: unknown, actor: unknown, actionId: unknown, startedAt: unknown): void {
-		const accepted = parseLightSwingAccepted(kind, actor, actionId, startedAt);
-		if (accepted === undefined || accepted.actor === Players.LocalPlayer) {
+	private handleAcceptedSwing(
+		kind: unknown,
+		actor: unknown,
+		actionId: unknown,
+		startedAt: unknown,
+		comboStep: unknown,
+	): void {
+		const accepted = parseLightSwingAccepted(kind, actor, actionId, startedAt, comboStep);
+		if (accepted === undefined) {
+			return;
+		}
+		if (accepted.actor === Players.LocalPlayer) {
+			const prediction = this.predictedStepsByActionId.get(accepted.actionId);
+			this.predictedStepsByActionId.delete(accepted.actionId);
+			if (prediction?.step !== accepted.comboStep) {
+				const character = accepted.actor.Character;
+				if (character !== undefined)
+					this.animator?.playLightSwing(character, accepted.startedAt, accepted.comboStep);
+			}
 			return;
 		}
 
 		const character = accepted.actor.Character;
 		if (character !== undefined) {
-			this.animator?.playLightSwing(character, accepted.startedAt);
+			this.animator?.playLightSwing(character, accepted.startedAt, accepted.comboStep);
 		}
+	}
+
+	private expireStalePredictions(now: number): void {
+		for (const [, prediction] of this.predictedStepsByActionId) {
+			if (now - prediction.sentAt > PREDICTION_EXPIRY_SECONDS) {
+				this.resetPrediction();
+				return;
+			}
+		}
+	}
+
+	private resetPrediction(): void {
+		this.nextLocalSwingAt = 0;
+		this.predictedCombo = undefined;
+		this.predictedStepsByActionId.clear();
 	}
 }

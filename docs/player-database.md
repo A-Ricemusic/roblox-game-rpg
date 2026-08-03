@@ -9,9 +9,16 @@ The production deployment is `grand-basilisk-273`:
 - Roblox HTTP Actions URL: `https://grand-basilisk-273.convex.site`
 - Health check: `https://grand-basilisk-273.convex.site/v1/health`
 
-The schema and HTTP actions are already deployed. `default.project.json` carries
-the non-secret site URL and secret-name attributes. Never put the shared secret,
-a Convex deploy key, or a Convex admin key in source control or a Roblox client.
+When Convex is selected in Studio, it uses the isolated cloud development deployment
+`prestigious-crab-721` by default (`https://prestigious-crab-721.convex.site`). Live
+servers use production. These defaults live in the server configuration module
+rather than DataModel root attributes so Rojo cannot clear them while a play session
+starts.
+
+The schema and HTTP actions are already deployed. The server configuration carries
+the non-secret environment URLs and secret-name default. Never put the shared
+secret, a Convex deploy key, or a Convex admin key in source control or a Roblox
+client.
 
 ## One required Roblox configuration step
 
@@ -118,10 +125,12 @@ The server reads these DataModel attributes:
 
 - `PlayerDatabaseBackend`: optional `Convex`, `DataStore`, or `Memory`. With no
   value, unpublished places use `Memory` and published places use `Convex`.
-- `ConvexSiteUrl`: the `.convex.site` HTTP Actions origin.
+- `ConvexSiteUrl`: optional `.convex.site` override. Studio defaults to
+  `prestigious-crab-721`; live servers default to `grand-basilisk-273`.
 - `ConvexSecretName`: Roblox Secret Store key; defaults to
   `CONVEX_PLAYER_DATABASE_KEY`.
-- `MigratePlayerDataStore`: defaults to `true`; see the migration procedure above.
+- `MigratePlayerDataStore`: defaults to `false` in Studio and `true` on live
+  servers; see the migration procedure above.
 
 `Memory` and `DataStore` are explicit development/rollback switches. Production
 does not silently fall back when Convex is unavailable because that would fork a

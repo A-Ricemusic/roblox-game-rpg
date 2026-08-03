@@ -72,13 +72,18 @@ export class WeaponRuntime {
 		this.characterConnections.get(player)?.Disconnect();
 		this.characterConnections.set(
 			player,
-			player.CharacterAdded.Connect((character) => this.equipStarterSword(character)),
+			player.CharacterAdded.Connect((character) => this.handleCharacterAdded(player, character)),
 		);
 
 		const existingCharacter = player.Character;
 		if (existingCharacter !== undefined) {
-			task.defer(() => this.equipStarterSword(existingCharacter));
+			task.defer(() => this.handleCharacterAdded(player, existingCharacter));
 		}
+	}
+
+	private handleCharacterAdded(player: Player, character: Model): void {
+		this.actionGate.forget(player.UserId);
+		this.equipStarterSword(character);
 	}
 
 	private unregisterPlayer(player: Player): void {
@@ -121,10 +126,11 @@ export class WeaponRuntime {
 		}
 
 		const startedAt = Workspace.GetServerTimeNow();
-		if (!this.actionGate.tryLightSwing(player.UserId, startedAt)) {
+		const comboStep = this.actionGate.tryLightSwing(player.UserId, startedAt);
+		if (comboStep === undefined) {
 			return;
 		}
 
-		this.actionRemote?.FireAllClients("LightSwingAccepted", player, request.actionId, startedAt);
+		this.actionRemote?.FireAllClients("LightSwingAccepted", player, request.actionId, startedAt, comboStep);
 	}
 }

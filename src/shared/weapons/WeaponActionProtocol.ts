@@ -1,3 +1,5 @@
+import { isLightComboStep, LightComboStep } from "./LightCombo";
+
 export interface LightSwingRequest {
 	readonly kind: "LightSwing";
 	readonly actionId: number;
@@ -10,6 +12,7 @@ export interface LightSwingAccepted {
 	readonly actor: Player;
 	readonly actionId: number;
 	readonly startedAt: number;
+	readonly comboStep: LightComboStep;
 }
 
 export const MAX_WEAPON_ACTION_ID = 2_147_483_647;
@@ -40,16 +43,18 @@ export function parseLightSwingAccepted(
 	actor: unknown,
 	actionId: unknown,
 	startedAt: unknown,
+	comboStep: unknown,
 ): LightSwingAccepted | undefined {
 	if (
 		kind !== "LightSwingAccepted" ||
 		!typeIs(actor, "Instance") ||
 		!actor.IsA("Player") ||
 		!isValidActionId(actionId) ||
-		!isFiniteNonNegativeNumber(startedAt)
+		!isFiniteNonNegativeNumber(startedAt) ||
+		!isLightComboStep(comboStep)
 	) {
 		return undefined;
 	}
 
-	return { kind, actor, actionId, startedAt };
+	return { kind, actor, actionId, startedAt, comboStep };
 }

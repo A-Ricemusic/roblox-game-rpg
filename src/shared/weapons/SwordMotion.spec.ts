@@ -1,42 +1,40 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
-import {
-	LIGHT_SWING_ANTICIPATION_SECONDS,
-	LIGHT_SWING_DURATION_SECONDS,
-	LIGHT_SWING_FOLLOW_THROUGH_SECONDS,
-	LIGHT_SWING_STRIKE_SECONDS,
-	sampleLightSwing,
-} from "./SwordMotion";
+import { getLightComboMotionDuration, sampleLightComboMotion } from "./SwordMotion";
 
-describe("sampleLightSwing", () => {
-	it("starts and ends in the neutral pose", () => {
-		expect(sampleLightSwing(0)?.rightShoulder).toEqual(CFrame.identity);
-		expect(sampleLightSwing(LIGHT_SWING_DURATION_SECONDS)?.rightShoulder).toEqual(CFrame.identity);
+describe("four-hit sword combo motion", () => {
+	it("starts and ends every step in a neutral pose", () => {
+		for (const step of [1, 2, 3, 4] as const) {
+			expect(sampleLightComboMotion(step, 0)?.rightShoulder).toEqual(CFrame.identity);
+			expect(sampleLightComboMotion(step, getLightComboMotionDuration(step))?.root).toEqual(CFrame.identity);
+		}
 	});
 
-	it("produces distinct anticipation, strike, and follow-through poses", () => {
-		const anticipation = sampleLightSwing(LIGHT_SWING_ANTICIPATION_SECONDS);
-		const strike = sampleLightSwing(LIGHT_SWING_STRIKE_SECONDS);
-		const followThrough = sampleLightSwing(LIGHT_SWING_FOLLOW_THROUGH_SECONDS);
-
-		expect(anticipation?.rightShoulder).never.toEqual(CFrame.identity);
-		expect(strike?.rightShoulder).never.toEqual(anticipation?.rightShoulder);
-		expect(followThrough?.rightShoulder).never.toEqual(strike?.rightShoulder);
-		expect(strike?.waist).never.toEqual(anticipation?.waist);
+	it("uses distinct full-body strike poses", () => {
+		const downward = sampleLightComboMotion(1, 0.33);
+		const upward = sampleLightComboMotion(2, 0.31);
+		const stab = sampleLightComboMotion(3, 0.38);
+		expect(downward?.rightShoulder).never.toEqual(upward?.rightShoulder);
+		expect(downward?.waist).never.toEqual(CFrame.identity);
+		expect(upward?.leftShoulder).never.toEqual(CFrame.identity);
+		expect(stab?.root.Position.Z).toBeLessThan(-0.4);
+		expect(stab?.rightHip).never.toEqual(CFrame.identity);
 	});
 
-	it("samples deterministic poses", () => {
-		const sampleTime = 0.2;
-		expect(sampleLightSwing(sampleTime)).toEqual(sampleLightSwing(sampleTime));
+	it("samples distinct phases throughout the 360 spin", () => {
+		const firstQuarter = sampleLightComboMotion(4, 0.33)?.root;
+		const middle = sampleLightComboMotion(4, 0.5)?.root;
+		const lastQuarter = sampleLightComboMotion(4, 0.67)?.root;
+		expect(firstQuarter).never.toEqual(CFrame.identity);
+		expect(middle).never.toEqual(firstQuarter);
+		expect(lastQuarter).never.toEqual(middle);
 	});
 
-	it("has ordered phase timings within the motion", () => {
-		expect(LIGHT_SWING_ANTICIPATION_SECONDS).toBeLessThan(LIGHT_SWING_STRIKE_SECONDS);
-		expect(LIGHT_SWING_STRIKE_SECONDS).toBeLessThan(LIGHT_SWING_FOLLOW_THROUGH_SECONDS);
-		expect(LIGHT_SWING_FOLLOW_THROUGH_SECONDS).toBeLessThan(LIGHT_SWING_DURATION_SECONDS);
-	});
-
-	it("rejects times outside the motion", () => {
-		expect(sampleLightSwing(-0.01)).toBeUndefined();
-		expect(sampleLightSwing(LIGHT_SWING_DURATION_SECONDS + 0.01)).toBeUndefined();
+	it("is deterministic and rejects times outside each motion", () => {
+		for (const step of [1, 2, 3, 4] as const) {
+			const sampleTime = getLightComboMotionDuration(step) / 2;
+			expect(sampleLightComboMotion(step, sampleTime)).toEqual(sampleLightComboMotion(step, sampleTime));
+			expect(sampleLightComboMotion(step, -0.01)).toBeUndefined();
+			expect(sampleLightComboMotion(step, getLightComboMotionDuration(step) + 0.01)).toBeUndefined();
+		}
 	});
 });

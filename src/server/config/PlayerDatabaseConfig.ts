@@ -1,4 +1,4 @@
-import { HttpService } from "@rbxts/services";
+import { HttpService, RunService } from "@rbxts/services";
 
 import { ConvexHttpTransport, RobloxConvexHttpTransport } from "server/quests/persistence/ConvexHttpTransport";
 import { ConvexQuestProfileRepository } from "server/quests/persistence/ConvexQuestProfileRepository";
@@ -15,6 +15,8 @@ export const CONVEX_SECRET_NAME_ATTRIBUTE = "ConvexSecretName";
 export const MIGRATE_DATASTORE_ATTRIBUTE = "MigratePlayerDataStore";
 export const DEFAULT_CONVEX_SECRET_NAME = "CONVEX_PLAYER_DATABASE_KEY";
 export const DEFAULT_CONVEX_LEASE_SECONDS = 180;
+export const DEVELOPMENT_CONVEX_SITE_URL = "https://prestigious-crab-721.convex.site";
+export const PRODUCTION_CONVEX_SITE_URL = "https://grand-basilisk-273.convex.site";
 
 type PlayerDatabaseBackend = "Convex" | "DataStore" | "Memory";
 
@@ -33,9 +35,16 @@ function backend(): PlayerDatabaseBackend {
 	return configured;
 }
 
-function shouldMigrateDataStore(): boolean {
-	const configured = game.GetAttribute(MIGRATE_DATASTORE_ATTRIBUTE);
-	return configured === undefined ? true : configured === true;
+export function resolveConvexSiteUrl(configured: unknown, isStudio: boolean): string {
+	return typeIs(configured, "string") && configured.size() > 0
+		? configured
+		: isStudio
+			? DEVELOPMENT_CONVEX_SITE_URL
+			: PRODUCTION_CONVEX_SITE_URL;
+}
+
+export function resolveShouldMigrateDataStore(configured: unknown, isStudio: boolean): boolean {
+	return typeIs(configured, "boolean") ? configured : !isStudio;
 }
 
 export function createPlayerDatabaseRepository(
@@ -53,14 +62,11 @@ export function createPlayerDatabaseRepository(
 	}
 
 	assert(HttpService.HttpEnabled, "Convex requires Game Settings > Security > Allow HTTP Requests.");
-	const siteUrl = stringAttribute(CONVEX_SITE_URL_ATTRIBUTE);
-	assert(
-		siteUrl !== undefined,
-		`${CONVEX_SITE_URL_ATTRIBUTE} must contain the deployment's https://*.convex.site URL.`,
-	);
+	const isStudio = RunService.IsStudio();
+	const siteUrl = resolveConvexSiteUrl(game.GetAttribute(CONVEX_SITE_URL_ATTRIBUTE), isStudio);
 	const secretName = stringAttribute(CONVEX_SECRET_NAME_ATTRIBUTE) ?? DEFAULT_CONVEX_SECRET_NAME;
 	const authorization = HttpService.GetSecret(secretName).AddPrefix("Bearer ");
-	const legacyRepository = shouldMigrateDataStore()
+	const legacyRepository = resolveShouldMigrateDataStore(game.GetAttribute(MIGRATE_DATASTORE_ATTRIBUTE), isStudio)
 		? new DataStoreQuestProfileRepository(PRODUCTION_QUEST_DATA_STORE_NAME)
 		: undefined;
 

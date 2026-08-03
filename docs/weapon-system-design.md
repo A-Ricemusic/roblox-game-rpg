@@ -1,6 +1,6 @@
 # Weapon System Design
 
-Status: first spawn/equip and procedural light-swing slice implemented and playtested  
+Status: spawn/equip and four-hit procedural light combo implemented  
 First weapon: one-handed Greek sword, no shield  
 Primary platform: mobile, with keyboard and mouse support for development  
 Implementation direction: TypeScript with `roblox-ts`
@@ -15,7 +15,7 @@ The first playable slice supports:
 
 - Equipping a one-handed sword from the player's saved inventory.
 - Attaching the sword to an R15 character's right hand.
-- A three-step light combo that can stop after any strike.
+- A four-step light combo that can stop after any strike.
 - A charged heavy attack produced by holding and releasing Attack.
 - Hold-to-block behavior.
 - Procedural character poses and transitions.
@@ -60,13 +60,14 @@ is replaced later.
 | Action | Player input | Motion | Initial gameplay role |
 | --- | --- | --- | --- |
 | Light 1 | Tap Attack | Fast diagonal cut | Safe opener |
-| Light 2 | Tap during combo window | Reverse horizontal cut | Combo continuation |
-| Light 3 | Tap during combo window | Committed downward cut | Higher damage and stagger |
+| Light 2 | Tap during combo window | Rising left-to-right diagonal | Combo continuation |
+| Light 3 | Tap during combo window | Forward step and thrust | Committed stab |
+| Light 4 | Tap during combo window | 360-degree spinning slash | Combo finisher |
 | Heavy | Hold Attack, then release | Draw back and forceful forward/downward cut | Slow, high damage |
 | Block | Hold Block | Raise sword into defensive position | Reduces valid frontal damage |
 
-A single tap followed by no additional input is naturally a one-strike combo. Two
-taps produce two strikes, and three correctly timed taps produce the complete combo.
+A single tap followed by no additional input is naturally a one-strike combo. Four
+correctly timed taps produce the complete combo, after which the sequence wraps.
 The system does not need separate one-strike and three-strike abilities.
 
 Initial tuning values are placeholders and should be adjusted in playtests:
@@ -589,7 +590,7 @@ The first weapon slice is complete when:
 - The sword is not a Tool and never appears in the Backpack.
 - Moving `PrimaryGrip` in Studio is sufficient to correct the weapon's hand placement.
 - Tap Attack performs one light strike; correctly timed repeated taps perform all
-  three combo strikes.
+  four combo strikes.
 - Holding and releasing Attack performs a bounded charged heavy attack.
 - Holding Block enters and visibly maintains a defensive state.
 - Server-validated sword sweeps damage an enemy at most once per strike.
@@ -635,8 +636,24 @@ The following behavior has been confirmed in Roblox Studio:
 - The light swing has anticipation, diagonal strike, follow-through, and recovery
   phases and returns the affected joints to neutral.
 
-The current slice does **not** deal damage and does not yet implement the three-hit
-combo, charged heavy attack, or block. Those remain the next combat milestones.
+The light attack is now a server-sequenced four-hit combination:
+
+1. A high-right windup followed by a downward right-to-left diagonal slash.
+2. A low-left recovery followed by an upward left-to-right diagonal slash.
+3. A forward stab with a procedural visual step and weight shift.
+4. A 360-degree spinning slash assembled from several sub-180-degree yaw keyframes,
+   preventing `CFrame` interpolation from taking the short path backward.
+
+Every move poses the root, waist, neck, both shoulders and elbows, hips, and knees
+when those joints exist. Only the right shoulder is mandatory; missing secondary
+joints degrade gracefully for avatar compatibility. Poses run in `PreSimulation` so
+they layer after Roblox's Animator evaluation, and all transforms reset after the
+move. The client predicts immediately for responsive input while the server owns the
+combo step and broadcasts the accepted result. Combo state resets after 1.1 seconds,
+on character respawn, and stale unacknowledged client predictions expire.
+
+The current slice still does **not** deal damage and does not yet implement charged
+heavy attacks or blocking. Those remain the next combat milestones.
 
 ### Avatar Joint Upgrade compatibility
 
