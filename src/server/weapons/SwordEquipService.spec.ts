@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { EQUIPPED_WEAPON_NAME, WEAPON_GRIP_MOTOR_NAME } from "shared/weapons/WeaponConstants";
-import { equipSword, hasEquippedStarterSword } from "./SwordEquipService";
+import { equipSword, hasEquippedStarterSword, unequipSword } from "./SwordEquipService";
 
 function createCharacterFixture(): Model {
 	const character = new Instance("Model");
@@ -90,6 +90,21 @@ describe("equipSword", () => {
 				.filter((child) => child.Name === EQUIPPED_WEAPON_NAME)
 				.size(),
 		).toBe(1);
+
+		character.Destroy();
+		template.Destroy();
+	});
+
+	it("removes both the equipped model and its hand grip", () => {
+		const character = createCharacterFixture();
+		const template = createSwordFixture();
+		expect(equipSword(character, template).success).toBe(true);
+
+		expect(unequipSword(character)).toBe(true);
+		expect(hasEquippedStarterSword(character)).toBe(false);
+		expect(character.FindFirstChild(EQUIPPED_WEAPON_NAME)).toBeUndefined();
+		expect(character.FindFirstChild("RightHand")?.FindFirstChild(WEAPON_GRIP_MOTOR_NAME)).toBeUndefined();
+		expect(unequipSword(character)).toBe(false);
 
 		character.Destroy();
 		template.Destroy();

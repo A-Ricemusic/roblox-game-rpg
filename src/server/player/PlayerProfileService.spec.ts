@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 
-import { createEmptyInventoryProfile } from "shared/inventory/InventoryEngine";
+import { createInitialInventoryProfile } from "shared/inventory/InventoryEngine";
 
 import { createTestPlayerServices } from "./testing/createTestPlayerServices";
 
@@ -21,7 +21,7 @@ describe("PlayerProfileService", () => {
 		const failedRelease = services.playerProfiles.unload("player:closing");
 		expect(failedRelease.ok).toBe(false);
 		expect(services.playerProfiles.isClosing("player:closing")).toBe(true);
-		expect(services.playerProfiles.updateInventoryProfile("player:closing", createEmptyInventoryProfile())).toBe(
+		expect(services.playerProfiles.updateInventoryProfile("player:closing", createInitialInventoryProfile())).toBe(
 			false,
 		);
 		expect(

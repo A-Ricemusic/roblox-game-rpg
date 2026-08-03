@@ -16,10 +16,12 @@ rather than DataModel root attributes so Rojo cannot clear them while a play ses
 starts.
 
 The repository contains the aggregate quest/inventory schema and HTTP actions. Deploy
-those Convex changes before enabling an inventory build against an environment. The
-server configuration carries the non-secret environment URLs and secret-name default. Never put the shared
-secret, a Convex deploy key, or a Convex admin key in source control or a Roblox
-client.
+additive Convex schema changes before enabling the corresponding Roblox build against
+an environment. For weapon inventory, `inventoryProfile.equipment` remains optional
+at the Convex boundary so legacy documents and older live servers remain compatible.
+The server configuration carries the non-secret environment URLs and secret-name
+default. Never put the shared secret, a Convex deploy key, or a Convex admin key in
+source control or a Roblox client.
 
 ## One required Roblox configuration step
 
@@ -68,8 +70,8 @@ The current `playerProfiles` document contains:
 
 - stable `profileKey` (`player:<Roblox user id>`), indexed uniquely by convention;
 - the strictly validated quest profile;
-- the strictly validated inventory profile containing quantities and claimed pickup
-  IDs;
+- the strictly validated inventory profile containing quantities, claimed pickup IDs,
+  and the selected owned weapon slot;
 - a monotonically increasing revision;
 - `pending` or `complete` legacy-migration state;
 - an optional server session lease;

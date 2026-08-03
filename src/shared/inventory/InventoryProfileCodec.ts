@@ -1,5 +1,6 @@
 import {
 	InventoryItemDefinition,
+	InventoryEquipment,
 	InventoryProfile,
 	INVENTORY_PROFILE_SCHEMA_VERSION,
 	MAX_CLAIMED_WORLD_PICKUPS,
@@ -7,7 +8,8 @@ import {
 	MAX_INVENTORY_ITEM_TYPES,
 	MAX_WORLD_PICKUP_ID_LENGTH,
 } from "./InventoryTypes";
-import { createEmptyInventoryProfile } from "./InventoryEngine";
+import { createInitialInventoryProfile } from "./InventoryEngine";
+import { HOPLITE_SWORD_ITEM_ID } from "shared/items/ItemIds";
 
 export type InventoryProfileDecodeResult =
 	{ readonly ok: true; readonly profile: InventoryProfile } | { readonly ok: false; readonly error: string };
@@ -42,11 +44,29 @@ function readPickupIds(value: unknown): string[] | undefined {
 	return output;
 }
 
+function readEquipment(
+	value: unknown,
+	itemQuantities: Readonly<Record<string, number>>,
+	definitionsById: ReadonlyMap<string, InventoryItemDefinition>,
+): InventoryEquipment | undefined {
+	if (!typeIs(value, "table")) return undefined;
+	const record = value as Readonly<Record<string, unknown>>;
+	for (const [key] of pairs(record)) {
+		if (key !== "schemaVersion" && key !== "weapon") return undefined;
+	}
+	if (record.schemaVersion !== 1) return undefined;
+	if (record.weapon === undefined) return { schemaVersion: 1 };
+	if (!validId(record.weapon)) return undefined;
+	const definition = definitionsById.get(record.weapon);
+	if (definition?.equipSlot !== "Weapon" || (itemQuantities[record.weapon] ?? 0) < 1) return undefined;
+	return { schemaVersion: 1, weapon: record.weapon };
+}
+
 export function decodeInventoryProfile(
 	value: unknown,
 	definitions: ReadonlyArray<InventoryItemDefinition>,
 ): InventoryProfileDecodeResult {
-	if (value === undefined) return { ok: true, profile: createEmptyInventoryProfile() };
+	if (value === undefined) return { ok: true, profile: createInitialInventoryProfile() };
 	if (!typeIs(value, "table")) return { ok: false, error: "Inventory profile must be a table." };
 	const record = value as Readonly<Record<string, unknown>>;
 	if (record.schemaVersion !== INVENTORY_PROFILE_SCHEMA_VERSION) {
@@ -83,9 +103,37 @@ export function decodeInventoryProfile(
 	if (pickupIds === undefined) {
 		return { ok: false, error: "Inventory profile contains an invalid, sparse, or duplicate pickup ID list." };
 	}
+	const starterDefinition = definitionsById.get(HOPLITE_SWORD_ITEM_ID);
+	if (starterDefinition?.equipSlot !== "Weapon") {
+		return { ok: false, error: `Starter weapon '${HOPLITE_SWORD_ITEM_ID}' is not configured.` };
+	}
+	if (itemQuantities[HOPLITE_SWORD_ITEM_ID] === undefined) {
+		// Never discard or quarantine a legacy player's items to make room for an additive starter grant.
+		// A profile already at the hard cap remains usable and starts unequipped.
+		if (itemTypes < MAX_INVENTORY_ITEM_TYPES) itemQuantities[HOPLITE_SWORD_ITEM_ID] = 1;
+	}
+
+	let equipment: InventoryEquipment;
+	if (record.equipment === undefined) {
+		equipment =
+			itemQuantities[HOPLITE_SWORD_ITEM_ID] === 1
+				? { schemaVersion: 1, weapon: HOPLITE_SWORD_ITEM_ID }
+				: { schemaVersion: 1 };
+	} else {
+		const parsedEquipment = readEquipment(record.equipment, itemQuantities, definitionsById);
+		if (parsedEquipment === undefined) {
+			return { ok: false, error: "Inventory profile contains invalid equipped item data." };
+		}
+		equipment = parsedEquipment;
+	}
 
 	return {
 		ok: true,
-		profile: { schemaVersion: INVENTORY_PROFILE_SCHEMA_VERSION, itemQuantities, claimedWorldPickupIds: pickupIds },
+		profile: {
+			schemaVersion: INVENTORY_PROFILE_SCHEMA_VERSION,
+			itemQuantities,
+			claimedWorldPickupIds: pickupIds,
+			equipment,
+		},
 	};
 }

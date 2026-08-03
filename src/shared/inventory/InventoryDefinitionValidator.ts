@@ -39,6 +39,23 @@ export function validateInventoryDefinitions(
 		if (definition.iconAssetId !== undefined && definition.iconAssetId.size() === 0) {
 			issues.push({ path: `${path}.iconAssetId`, message: "Icon asset ID must not be empty when provided." });
 		}
+		if (definition.category === "Weapon" && definition.equipSlot !== "Weapon") {
+			issues.push({ path: `${path}.equipSlot`, message: "Weapon items must use the Weapon equipment slot." });
+		}
+		if (definition.equipSlot === "Weapon") {
+			if (definition.category !== "Weapon") {
+				issues.push({ path: `${path}.category`, message: "Weapon-slot items must use the Weapon category." });
+			}
+			if (definition.maxStack !== 1) {
+				issues.push({
+					path: `${path}.maxStack`,
+					message: "Equippable weapons must have a maximum stack of 1.",
+				});
+			}
+			if (definition.canDrop) {
+				issues.push({ path: `${path}.canDrop`, message: "Equippable weapons cannot be dropped yet." });
+			}
+		}
 	}
 	return issues;
 }

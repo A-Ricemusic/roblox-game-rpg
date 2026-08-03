@@ -6,11 +6,15 @@ import { InventoryHud } from "./InventoryHud";
 class FakeRemote implements InventoryClientRemote {
 	private readonly event = new Instance("BindableEvent");
 	public requests = 0;
+	public readonly equipmentRequests = new Array<{ readonly itemId?: string }>();
 	public onMessage(callback: (payload: unknown) => void): RBXScriptConnection {
 		return this.event.Event.Connect(callback);
 	}
 	public requestSnapshot(): void {
 		this.requests += 1;
+	}
+	public setWeaponEquipped(itemId: string | undefined): void {
+		this.equipmentRequests.push({ itemId });
 	}
 	public emit(payload: unknown): void {
 		this.event.Fire(payload);
@@ -72,6 +76,7 @@ describe("InventoryClientController", () => {
 					description: "Divine nourishment.",
 					category: "Consumable",
 					quantity: 1,
+					equipped: false,
 				},
 			],
 		});
@@ -106,11 +111,23 @@ describe("InventoryClientController", () => {
 					description: "Ancient stone.",
 					category: "Material",
 					quantity: 2,
+					equipped: false,
 				},
 			],
 		});
 		expect(hud.getRoot().FindFirstChild("InventoryItem_marble_fragment", true)).toBeUndefined();
 		controller.toggle(true);
 		expect(hud.getRoot().FindFirstChild("InventoryItem_marble_fragment", true)).toBeDefined();
+	});
+
+	it("forwards weapon equip and unequip intent without authoring inventory state", () => {
+		parent = new Instance("Folder");
+		hud = new InventoryHud(parent);
+		remote = new FakeRemote();
+		controller = new InventoryClientController(hud, remote, new FakeBinding());
+		controller.start();
+		controller.setWeaponEquipped("hoplite_sword");
+		controller.setWeaponEquipped(undefined);
+		expect(remote.equipmentRequests).toEqual([{ itemId: "hoplite_sword" }, {}]);
 	});
 });

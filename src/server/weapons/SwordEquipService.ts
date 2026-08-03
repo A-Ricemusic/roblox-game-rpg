@@ -88,6 +88,23 @@ export function hasEquippedStarterSword(character: Model): boolean {
 	);
 }
 
+export function unequipSword(character: Model): boolean {
+	let changed = false;
+	const rightHand = character.FindFirstChild("RightHand");
+	const gripMotor = rightHand?.FindFirstChild(WEAPON_GRIP_MOTOR_NAME);
+	if (gripMotor !== undefined) {
+		gripMotor.Destroy();
+		changed = true;
+	}
+
+	const equipped = character.FindFirstChild(EQUIPPED_WEAPON_NAME);
+	if (equipped !== undefined) {
+		equipped.Destroy();
+		changed = true;
+	}
+	return changed;
+}
+
 export function findStarterSwordTemplate(replicatedStorage: ReplicatedStorage): Instance | undefined {
 	return replicatedStorage
 		.FindFirstChild("Assets")

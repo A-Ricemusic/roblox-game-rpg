@@ -54,6 +54,7 @@ export class InventoryHud {
 	private readonly closeButton = new Instance("TextButton");
 	private readonly capacityLabel: TextLabel;
 	private readonly content = new Instance("ScrollingFrame");
+	private equipmentActionHandler?: (itemId: string | undefined) => void;
 
 	public constructor(parent: Instance) {
 		this.root.Name = "InventoryHud";
@@ -186,6 +187,10 @@ export class InventoryHud {
 		return this.root;
 	}
 
+	public setEquipmentActionHandler(handler: ((itemId: string | undefined) => void) | undefined): void {
+		this.equipmentActionHandler = handler;
+	}
+
 	public destroy(): void {
 		this.root.Destroy();
 	}
@@ -212,5 +217,21 @@ export class InventoryHud {
 		const description = label(row, "ItemDescription", item.description, 12);
 		description.LayoutOrder = 3;
 		description.TextColor3 = COLORS.muted;
+		if (item.equipSlot === "Weapon") {
+			const action = new Instance("TextButton");
+			action.Name = item.equipped ? "UnequipWeapon" : "EquipWeapon";
+			action.AutoButtonColor = true;
+			action.BackgroundColor3 = item.equipped ? Color3.fromRGB(104, 62, 53) : Color3.fromRGB(67, 91, 67);
+			action.BorderSizePixel = 0;
+			action.Font = Enum.Font.GothamBold;
+			action.LayoutOrder = 4;
+			action.Size = new UDim2(0, 124, 0, 44);
+			action.Text = item.equipped ? "UNEQUIP" : "EQUIP";
+			action.TextColor3 = COLORS.parchment;
+			action.TextSize = 12;
+			action.Parent = row;
+			corner(action, 7);
+			action.Activated.Connect(() => this.equipmentActionHandler?.(item.equipped ? undefined : item.itemId));
+		}
 	}
 }

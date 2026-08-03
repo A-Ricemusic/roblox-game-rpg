@@ -140,6 +140,7 @@ describe("inventory profile semantic validation", () => {
 				schemaVersion: 1,
 				itemQuantities: { marble_fragment: 3 },
 				claimedWorldPickupIds: ["ruins:marble:1"],
+				equipment: { schemaVersion: 1 },
 			}),
 		).not.toThrow();
 	});
@@ -150,6 +151,7 @@ describe("inventory profile semantic validation", () => {
 				schemaVersion: 1,
 				itemQuantities: { marble_fragment: -1 },
 				claimedWorldPickupIds: [],
+				equipment: { schemaVersion: 1 },
 			}),
 		).toThrow("quantity");
 		expect(() =>
@@ -157,6 +159,7 @@ describe("inventory profile semantic validation", () => {
 				schemaVersion: 1,
 				itemQuantities: {},
 				claimedWorldPickupIds: ["same", "same"],
+				equipment: { schemaVersion: 1 },
 			}),
 		).toThrow("duplicated");
 		expect(() => assertValidInventoryProfile(undefined as unknown as InventoryProfile)).toThrow("schema version 1");
@@ -168,6 +171,7 @@ describe("inventory profile semantic validation", () => {
 				schemaVersion: 1,
 				itemQuantities: {},
 				claimedWorldPickupIds: ["p".repeat(116)],
+				equipment: { schemaVersion: 1 },
 			}),
 		).toThrow("115");
 		expect(() =>
@@ -175,7 +179,45 @@ describe("inventory profile semantic validation", () => {
 				schemaVersion: 1,
 				itemQuantities: {},
 				claimedWorldPickupIds: Array.from({ length: 1_025 }, (_, index) => `pickup:${index}`),
+				equipment: { schemaVersion: 1 },
 			}),
 		).toThrow("too many claimed world pickups");
+	});
+
+	it("requires an equipped weapon to be owned", () => {
+		expect(() =>
+			assertValidInventoryProfile({
+				schemaVersion: 1,
+				itemQuantities: {},
+				claimedWorldPickupIds: [],
+				equipment: { schemaVersion: 1, weapon: "hoplite_sword" },
+			}),
+		).toThrow("not owned");
+	});
+
+	it("accepts legacy missing equipment and explicit unequipped state", () => {
+		expect(() =>
+			assertValidInventoryProfile({
+				schemaVersion: 1,
+				itemQuantities: { hoplite_sword: 1 },
+				claimedWorldPickupIds: [],
+			} as InventoryProfile),
+		).not.toThrow();
+		expect(() =>
+			assertValidInventoryProfile({
+				schemaVersion: 1,
+				itemQuantities: { hoplite_sword: 1 },
+				claimedWorldPickupIds: [],
+				equipment: { schemaVersion: 1 },
+			}),
+		).not.toThrow();
+		expect(() =>
+			assertValidInventoryProfile({
+				schemaVersion: 1,
+				itemQuantities: { hoplite_sword: 2 },
+				claimedWorldPickupIds: [],
+				equipment: { schemaVersion: 1 },
+			}),
+		).toThrow("exactly once");
 	});
 });

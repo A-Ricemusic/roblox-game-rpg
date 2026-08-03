@@ -23,6 +23,8 @@ export function buildInventorySnapshot(
 			category: definition.category,
 			quantity,
 			iconAssetId: definition.iconAssetId,
+			equipSlot: definition.equipSlot,
+			equipped: definition.equipSlot === "Weapon" && profile.equipment.weapon === itemId,
 		});
 	}
 	items.sort((left, right) => left.displayName < right.displayName);

@@ -16,9 +16,20 @@ function isString(value: unknown): value is string {
 
 export function parseInventoryClientRequest(value: unknown): InventoryClientRequest | undefined {
 	if (!typeIs(value, "table")) return undefined;
-	return (value as Readonly<Record<string, unknown>>).kind === "RequestSnapshot"
-		? { kind: "RequestSnapshot" }
-		: undefined;
+	const request = value as Readonly<Record<string, unknown>>;
+	if (request.kind === "RequestSnapshot") {
+		for (const [key] of pairs(request)) if (key !== "kind") return undefined;
+		return { kind: "RequestSnapshot" };
+	}
+	if (request.kind !== "SetWeaponEquipped") return undefined;
+	for (const [key] of pairs(request)) if (key !== "kind" && key !== "itemId") return undefined;
+	if (
+		request.itemId !== undefined &&
+		(!isString(request.itemId) || request.itemId.size() === 0 || request.itemId.size() > MAX_INVENTORY_ID_LENGTH)
+	) {
+		return undefined;
+	}
+	return { kind: "SetWeaponEquipped", itemId: request.itemId };
 }
 
 function parseItem(value: unknown): InventoryItemClientView | undefined {
@@ -33,12 +44,16 @@ function parseItem(value: unknown): InventoryItemClientView | undefined {
 		(item.category !== "Material" &&
 			item.category !== "Consumable" &&
 			item.category !== "Quest" &&
+			item.category !== "Weapon" &&
 			item.category !== "Miscellaneous") ||
 		!typeIs(item.quantity, "number") ||
 		item.quantity < 1 ||
 		item.quantity > MAX_INVENTORY_STACK_QUANTITY ||
 		math.floor(item.quantity) !== item.quantity ||
-		(item.iconAssetId !== undefined && !isString(item.iconAssetId))
+		(item.iconAssetId !== undefined && !isString(item.iconAssetId)) ||
+		(item.equipSlot !== undefined && item.equipSlot !== "Weapon") ||
+		!typeIs(item.equipped, "boolean") ||
+		(item.equipped && item.equipSlot !== "Weapon")
 	) {
 		return undefined;
 	}
@@ -49,6 +64,8 @@ function parseItem(value: unknown): InventoryItemClientView | undefined {
 		category: item.category,
 		quantity: item.quantity,
 		iconAssetId: item.iconAssetId,
+		equipSlot: item.equipSlot,
+		equipped: item.equipped,
 	};
 }
 

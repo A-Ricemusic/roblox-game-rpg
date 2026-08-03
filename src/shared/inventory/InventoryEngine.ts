@@ -1,5 +1,6 @@
 import {
 	InventoryGrantResult,
+	InventoryEquipmentResult,
 	InventoryItemDefinition,
 	InventoryProfile,
 	INVENTORY_PROFILE_SCHEMA_VERSION,
@@ -10,9 +11,15 @@ import {
 	WORLD_PICKUP_TRANSACTION_PREFIX,
 	WorldPickupGrant,
 } from "./InventoryTypes";
+import { HOPLITE_SWORD_ITEM_ID } from "shared/items/ItemIds";
 
-export function createEmptyInventoryProfile(): InventoryProfile {
-	return { schemaVersion: INVENTORY_PROFILE_SCHEMA_VERSION, itemQuantities: {}, claimedWorldPickupIds: [] };
+export function createInitialInventoryProfile(): InventoryProfile {
+	return {
+		schemaVersion: INVENTORY_PROFILE_SCHEMA_VERSION,
+		itemQuantities: { [HOPLITE_SWORD_ITEM_ID]: 1 },
+		claimedWorldPickupIds: [],
+		equipment: { schemaVersion: 1, weapon: HOPLITE_SWORD_ITEM_ID },
+	};
 }
 
 function definitionMap(
@@ -21,6 +28,28 @@ function definitionMap(
 	const byId = new Map<string, InventoryItemDefinition>();
 	for (const definition of definitions) byId.set(definition.id, definition);
 	return byId;
+}
+
+export function setEquippedWeapon(
+	profile: InventoryProfile,
+	definitions: ReadonlyArray<InventoryItemDefinition>,
+	itemId: string | undefined,
+): InventoryEquipmentResult {
+	if (itemId === undefined) {
+		return profile.equipment.weapon === undefined
+			? { ok: true, profile, changed: false }
+			: { ok: true, profile: { ...profile, equipment: { schemaVersion: 1 } }, changed: true };
+	}
+	if (itemId.size() === 0 || itemId.size() > MAX_INVENTORY_ID_LENGTH) {
+		return { ok: false, reason: "UnknownItem" };
+	}
+	const definition = definitionMap(definitions).get(itemId);
+	if (definition === undefined) return { ok: false, reason: "UnknownItem" };
+	if (definition.equipSlot !== "Weapon") return { ok: false, reason: "NotEquippable" };
+	if ((profile.itemQuantities[itemId] ?? 0) < 1) return { ok: false, reason: "NotOwned" };
+	return profile.equipment.weapon === itemId
+		? { ok: true, profile, changed: false }
+		: { ok: true, profile: { ...profile, equipment: { schemaVersion: 1, weapon: itemId } }, changed: true };
 }
 
 function itemTypeCount(profile: InventoryProfile): number {

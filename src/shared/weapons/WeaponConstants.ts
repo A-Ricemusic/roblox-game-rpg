@@ -1,4 +1,6 @@
-export const STARTER_WEAPON_ID = "hoplite_sword";
+import { HOPLITE_SWORD_ITEM_ID } from "shared/items/ItemIds";
+
+export const STARTER_WEAPON_ID = HOPLITE_SWORD_ITEM_ID;
 export const STARTER_WEAPON_ASSET_NAME = "HopliteSword";
 
 export const EQUIPPED_WEAPON_NAME = "EquippedWeapon";

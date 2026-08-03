@@ -102,12 +102,14 @@ The current suites cover:
 
 ## Inventory coverage map
 
-The inventory suites additionally cover definition and stack bounds, dense profile
-decoding, duplicate pickup protection, maximum transaction-ID length, live
-CollectionService registration/removal, unknown item definitions, authoritative
-distance checks, grant-to-quest orchestration, release-time mutation blocking,
-read-only remotes, malformed snapshots, hidden-HUD snapshot caching, and aggregate
-quest/inventory persistence.
+The inventory suites additionally cover definition and stack bounds, starter sword
+ownership, immutable equip/unequip decisions, explicit unequipped and legacy profile
+migration, Roblox JSON object encoding, duplicate pickup protection, maximum
+transaction-ID length, live CollectionService registration/removal, unknown item
+definitions, authoritative distance checks, grant-to-quest orchestration,
+release-time mutation blocking, intent-only equipment remotes with independent rate
+buckets, malformed snapshots, hidden-HUD snapshot caching, physical sword/grip
+removal, equipment controls, and aggregate quest/inventory persistence.
 
 ## Design rules for new tests
 

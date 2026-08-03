@@ -45,6 +45,7 @@ describe("InventoryHud", () => {
 					description: "Ancient stone.",
 					category: "Material",
 					quantity: 4,
+					equipped: false,
 				},
 			],
 		});
@@ -53,5 +54,44 @@ describe("InventoryHud", () => {
 		expect(descendant(hud.getRoot(), "InventoryContent", "ScrollingFrame").AutomaticCanvasSize).toBe(
 			Enum.AutomaticSize.Y,
 		);
+	});
+
+	it("renders weapon equipment state and publishes equip intent", () => {
+		parent = new Instance("Folder");
+		hud = new InventoryHud(parent);
+		hud.render({
+			kind: "Snapshot",
+			occupiedSlots: 1,
+			maximumSlots: 200,
+			items: [
+				{
+					itemId: "hoplite_sword",
+					displayName: "Hoplite Sword",
+					description: "Bronze sword.",
+					category: "Weapon",
+					quantity: 1,
+					equipSlot: "Weapon",
+					equipped: false,
+				},
+			],
+		});
+		expect(descendant(hud.getRoot(), "EquipWeapon", "TextButton").Text).toBe("EQUIP");
+		hud.render({
+			kind: "Snapshot",
+			occupiedSlots: 1,
+			maximumSlots: 200,
+			items: [
+				{
+					itemId: "hoplite_sword",
+					displayName: "Hoplite Sword",
+					description: "Bronze sword.",
+					category: "Weapon",
+					quantity: 1,
+					equipSlot: "Weapon",
+					equipped: true,
+				},
+			],
+		});
+		expect(descendant(hud.getRoot(), "UnequipWeapon", "TextButton").Text).toBe("UNEQUIP");
 	});
 });

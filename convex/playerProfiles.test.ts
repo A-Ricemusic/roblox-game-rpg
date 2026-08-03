@@ -6,7 +6,12 @@ import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.*s");
 const questProfile = { schemaVersion: 1 as const, activeQuests: {}, completedQuestIds: [] };
-const inventoryProfile = { schemaVersion: 1 as const, itemQuantities: {}, claimedWorldPickupIds: [] };
+const inventoryProfile = {
+	schemaVersion: 1 as const,
+	itemQuantities: { hoplite_sword: 1 },
+	claimedWorldPickupIds: [],
+	equipment: { schemaVersion: 1 as const, weapon: "hoplite_sword" },
+};
 const profile = { schemaVersion: 1 as const, questProfile, inventoryProfile };
 const authorization = "Bearer test-secret-that-is-at-least-thirty-two-characters-long";
 
@@ -36,6 +41,47 @@ describe("player profile transactions", () => {
 			leaseSeconds: 180,
 		});
 		expect(competing.status).toBe("leased");
+	});
+
+	it("acquires a legacy inventory without equipment and accepts its migrated save", async () => {
+		const t = convexTest({ schema, modules });
+		await t.run(async (ctx) => {
+			await ctx.db.insert("playerProfiles", {
+				profileKey: "player:legacy-equipment",
+				questProfile,
+				inventoryProfile: {
+					schemaVersion: 1,
+					itemQuantities: {},
+					claimedWorldPickupIds: [],
+				},
+				migrationStatus: "complete",
+				revision: 4,
+				createdAt: Date.now(),
+				updatedAt: Date.now(),
+			});
+		});
+
+		const acquired = await t.mutation(internal.playerProfiles.acquire, {
+			profileKey: "player:legacy-equipment",
+			sessionId: "session:legacy",
+			serverId: "server:a",
+			leaseSeconds: 180,
+		});
+		expect(acquired.status).toBe("ok");
+		if (acquired.status !== "ok") return;
+		expect(acquired.profile.inventoryProfile.equipment).toBeUndefined();
+
+		const saved = await t.mutation(internal.playerProfiles.save, {
+			profileKey: "player:legacy-equipment",
+			sessionId: "session:legacy",
+			operationId: "save:migrated-equipment",
+			expectedRevision: 4,
+			leaseSeconds: 180,
+			profile,
+		});
+		expect(saved).toMatchObject({ status: "ok", revision: 5 });
+		const documents = await t.run(async (ctx) => ctx.db.query("playerProfiles").collect());
+		expect(documents[0].inventoryProfile?.equipment).toEqual(inventoryProfile.equipment);
 	});
 
 	it("allows takeover after lease expiration", async () => {

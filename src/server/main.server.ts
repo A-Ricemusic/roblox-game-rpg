@@ -10,6 +10,7 @@ import { CollectiblePromptRouter } from "./collectibles/CollectiblePromptRouter"
 import { QuestCollectibleClaimService } from "./collectibles/QuestCollectibleClaimService";
 import { createPlayerDatabaseRepository } from "./config/PlayerDatabaseConfig";
 import { InventoryProfileService } from "./inventory/InventoryProfileService";
+import { InventoryEquipmentCoordinator } from "./inventory/InventoryEquipmentCoordinator";
 import { InventoryPickupCoordinator } from "./inventory/InventoryPickupCoordinator";
 import { InventoryQuestBridge } from "./inventory/InventoryQuestBridge";
 import { getOrCreateInventoryRemote, InventoryRemoteService } from "./inventory/InventoryRemoteService";
@@ -36,6 +37,8 @@ const store = new ResilientPlayerProfileStore(repository);
 const playerProfiles = new PlayerProfileService(store, QUEST_DEFINITIONS, INVENTORY_ITEM_DEFINITIONS);
 const profiles = new QuestProfileService(playerProfiles, QUEST_DEFINITIONS);
 const inventories = new InventoryProfileService(playerProfiles, INVENTORY_ITEM_DEFINITIONS);
+const weapons = new WeaponRuntime((player) => inventories.get(profileKey(player))?.equipment.weapon);
+const equipment = new InventoryEquipmentCoordinator(inventories, weapons);
 const inventoryQuestBridge = new InventoryQuestBridge(profiles);
 const registry = new CollectibleRegistry(new RobloxCollectionTagSource());
 const claims = new QuestCollectibleClaimService(registry, profiles);
@@ -51,6 +54,8 @@ const inventoryRemotes = new InventoryRemoteService(
 	getOrCreateInventoryRemote(),
 	inventories,
 	INVENTORY_ITEM_DEFINITIONS,
+	equipment,
+	os.clock,
 );
 const collectiblePromptRouter = new CollectiblePromptRouter(
 	pickupRegistry,
@@ -60,7 +65,6 @@ const collectiblePromptRouter = new CollectiblePromptRouter(
 	registry,
 	claims,
 );
-const weapons = new WeaponRuntime();
 const loadingProfileKeys = new Set<string>();
 let closing = false;
 
@@ -85,6 +89,7 @@ function loadPlayer(player: Player): void {
 	}
 	if (playerProfiles.get(key) !== undefined) {
 		if (player.Parent === Players) {
+			equipment.syncPlayer(player);
 			remotes.sendSnapshot(player, key);
 			inventoryRemotes.sendSnapshot(player, key);
 		}
@@ -105,6 +110,7 @@ function loadPlayer(player: Player): void {
 		if (!released.ok) warn(`[PlayerRuntime] Failed to release disconnected ${key}: ${released.error}`);
 		return;
 	}
+	equipment.syncPlayer(currentPlayer);
 	remotes.sendSnapshot(currentPlayer, key);
 	inventoryRemotes.sendSnapshot(currentPlayer, key);
 }

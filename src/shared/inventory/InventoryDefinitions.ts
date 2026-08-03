@@ -1,6 +1,16 @@
 import { InventoryItemDefinition } from "./InventoryTypes";
+import { HOPLITE_SWORD_ITEM_ID } from "shared/items/ItemIds";
 
 export const INVENTORY_ITEM_DEFINITIONS = [
+	{
+		id: HOPLITE_SWORD_ITEM_ID,
+		displayName: "Hoplite Sword",
+		description: "A dependable bronze blade carried by a warrior of the polis.",
+		category: "Weapon",
+		maxStack: 1,
+		canDrop: false,
+		equipSlot: "Weapon",
+	},
 	{
 		id: "sacred_olive_branch",
 		displayName: "Sacred Olive Branch",

@@ -27,6 +27,7 @@ export const inventoryProfileValidator = v.object({
 	schemaVersion: v.literal(1),
 	itemQuantities: v.record(v.string(), v.number()),
 	claimedWorldPickupIds: v.array(v.string()),
+	equipment: v.optional(v.object({ schemaVersion: v.literal(1), weapon: v.optional(v.string()) })),
 });
 
 export const playerProfileValidator = v.object({
@@ -48,6 +49,7 @@ const MAX_TOTAL_PROCESSED_SOURCE_IDS = 2_048;
 const MAX_INVENTORY_ITEM_TYPES = 200;
 const MAX_CLAIMED_WORLD_PICKUPS = 1_024;
 const MAX_INVENTORY_STACK_QUANTITY = 1_000_000;
+const STARTER_WEAPON_ID = "hoplite_sword";
 
 function assertPersistedId(
 	value: unknown,
@@ -150,6 +152,16 @@ export function assertValidInventoryProfile(profile: InventoryProfile): void {
 		assertPersistedId(pickupId, "claimed world pickup ID", MAX_WORLD_PICKUP_ID_LENGTH);
 		if (pickupIds.has(pickupId)) throw new Error(`Claimed world pickup '${pickupId}' is duplicated.`);
 		pickupIds.add(pickupId);
+	}
+	const starterWeaponQuantity = profile.itemQuantities[STARTER_WEAPON_ID];
+	if (starterWeaponQuantity !== undefined && starterWeaponQuantity !== 1) {
+		throw new Error(`Starter weapon '${STARTER_WEAPON_ID}' must be owned exactly once when present.`);
+	}
+	if (profile.equipment?.weapon !== undefined) {
+		assertPersistedId(profile.equipment.weapon, "equipped weapon ID");
+		if ((profile.itemQuantities[profile.equipment.weapon] ?? 0) < 1) {
+			throw new Error(`Equipped weapon '${profile.equipment.weapon}' is not owned.`);
+		}
 	}
 }
 

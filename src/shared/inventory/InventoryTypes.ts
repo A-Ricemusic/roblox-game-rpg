@@ -7,7 +7,8 @@ export const WORLD_PICKUP_TRANSACTION_PREFIX = "world-pickup:";
 export const MAX_WORLD_PICKUP_ID_LENGTH = MAX_INVENTORY_ID_LENGTH - WORLD_PICKUP_TRANSACTION_PREFIX.size();
 
 export type InventoryItemId = string;
-export type InventoryItemCategory = "Material" | "Consumable" | "Quest" | "Miscellaneous";
+export type InventoryItemCategory = "Material" | "Consumable" | "Quest" | "Weapon" | "Miscellaneous";
+export type InventoryEquipmentSlot = "Weapon";
 
 export interface InventoryItemDefinition {
 	readonly id: InventoryItemId;
@@ -17,12 +18,19 @@ export interface InventoryItemDefinition {
 	readonly maxStack: number;
 	readonly iconAssetId?: string;
 	readonly canDrop: boolean;
+	readonly equipSlot?: InventoryEquipmentSlot;
+}
+
+export interface InventoryEquipment {
+	readonly schemaVersion: 1;
+	readonly weapon?: InventoryItemId;
 }
 
 export interface InventoryProfile {
 	readonly schemaVersion: typeof INVENTORY_PROFILE_SCHEMA_VERSION;
 	readonly itemQuantities: Readonly<Record<InventoryItemId, number>>;
 	readonly claimedWorldPickupIds: ReadonlyArray<string>;
+	readonly equipment: InventoryEquipment;
 }
 
 export interface WorldPickupGrant {
@@ -50,6 +58,12 @@ export type InventoryGrantResult =
 	  }
 	| { readonly ok: false; readonly reason: InventoryGrantFailureReason };
 
+export type InventoryEquipmentFailureReason = "UnknownItem" | "NotOwned" | "NotEquippable";
+
+export type InventoryEquipmentResult =
+	| { readonly ok: true; readonly profile: InventoryProfile; readonly changed: boolean }
+	| { readonly ok: false; readonly reason: InventoryEquipmentFailureReason };
+
 export interface InventoryItemClientView {
 	readonly itemId: InventoryItemId;
 	readonly displayName: string;
@@ -57,9 +71,12 @@ export interface InventoryItemClientView {
 	readonly category: InventoryItemCategory;
 	readonly quantity: number;
 	readonly iconAssetId?: string;
+	readonly equipSlot?: InventoryEquipmentSlot;
+	readonly equipped: boolean;
 }
 
-export type InventoryClientRequest = { readonly kind: "RequestSnapshot" };
+export type InventoryClientRequest =
+	{ readonly kind: "RequestSnapshot" } | { readonly kind: "SetWeaponEquipped"; readonly itemId?: InventoryItemId };
 
 export type InventoryServerMessage = Readonly<{
 	kind: "Snapshot";

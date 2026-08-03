@@ -1,5 +1,6 @@
-import { claimWorldPickup } from "shared/inventory/InventoryEngine";
+import { claimWorldPickup, setEquippedWeapon } from "shared/inventory/InventoryEngine";
 import {
+	InventoryEquipmentResult,
 	InventoryGrantResult,
 	InventoryItemDefinition,
 	InventoryProfile,
@@ -25,6 +26,14 @@ export class InventoryProfileService {
 		if (profile === undefined) return undefined;
 		const result = claimWorldPickup(profile, this.definitions, grant);
 		if (result.ok) this.playerProfiles.updateInventoryProfile(profileKey, result.profile);
+		return result;
+	}
+
+	public setEquippedWeapon(profileKey: string, itemId: string | undefined): InventoryEquipmentResult | undefined {
+		const profile = this.get(profileKey);
+		if (profile === undefined) return undefined;
+		const result = setEquippedWeapon(profile, this.definitions, itemId);
+		if (result.ok && result.changed) this.playerProfiles.updateInventoryProfile(profileKey, result.profile);
 		return result;
 	}
 }

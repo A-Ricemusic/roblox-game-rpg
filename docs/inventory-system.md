@@ -9,22 +9,24 @@ the inventory-to-quest event bridge.
 
 The system provides:
 
-- immutable, validated non-weapon item definitions;
+- immutable, validated item and starter-weapon definitions;
 - server-authoritative, one-time-per-player world pickups;
 - `CollectionService` registration with stable pickup IDs and metadata validation;
 - interaction-distance, stack-capacity, duplicate, and profile-readiness checks;
 - persistent item quantities and claimed pickup IDs;
 - one aggregate Convex save containing inventory and quest state;
-- a sanitized, read-only client snapshot protocol;
+- a sanitized snapshot protocol plus a narrowly validated weapon-selection intent;
 - a responsive, scrolling inventory GUI opened with `I`, controller `ButtonY`, or
   the on-screen Inventory button;
+- server-authoritative Hoplite Sword equip/unequip controls in that GUI;
 - a typed bridge that lets successful inventory grants progress collectible quests;
 - Roblox Jest and Convex transaction/contract coverage.
 
-It does not create, spawn, equip, serialize, or otherwise manage weapons or Roblox
-`Tool` Instances. Weapon inventory/equipment must be designed as an explicit later
-integration with the combat owner. Trading, dropping, consuming, crafting, item
-instances, randomized affixes, weight, and multiple stacks are also deferred.
+The inventory persists weapon ownership and the selected weapon slot, while the
+combat runtime remains responsible for materializing or removing the weapon model on
+the character. The system does not use Roblox `Tool` Instances. Trading, dropping,
+consuming, crafting, item instances, randomized affixes, weight, and multiple stacks
+are also deferred.
 
 ## Runtime flow
 
@@ -43,19 +45,28 @@ InventoryPickupCoordinator ── applies the grant and publishes its quest fact
 		├── InventoryProfileService → PlayerProfileService → aggregate save/release
 		├── InventoryRemoteService → sanitized GUI snapshot
 		└── InventoryQuestBridge → collectible quest event
+
+Inventory GUI Equip/Unequip intent
+        │ rate-limited and parsed on the server
+        ▼
+InventoryRemoteService → InventoryEquipmentCoordinator
+        ├── InventoryProfileService → persistent desired weapon slot
+        └── WeaponRuntime → character sword model + grip motor
 ```
 
-The client can only request a fresh snapshot. It cannot send item IDs, quantities,
-pickup IDs, grants, removals, or inventory counters. Metadata comes from registered
+The client can request a fresh snapshot or request a selected weapon ID/empty weapon
+slot. It cannot author ownership, quantities, pickup IDs, grants, removals, or
+inventory counters. The server accepts an equipment choice only when its definition
+is a weapon and the loaded profile owns it. Pickup metadata comes from registered
 server Instances and item definitions.
 
 ## Module map
 
 - `src/shared/inventory/InventoryTypes.ts`: definitions, persistent state, grants,
   limits, and client contracts.
-- `InventoryDefinitions.ts`: content registry for non-weapon items.
+- `InventoryDefinitions.ts`: content registry for inventory items and owned weapons.
 - `InventoryDefinitionValidator.ts`: startup validation.
-- `InventoryEngine.ts`: pure immutable world-pickup reducer.
+- `InventoryEngine.ts`: pure immutable pickup and equipment reducers.
 - `InventoryProfileCodec.ts`: validation of untrusted persisted inventory data.
 - `InventoryViewModel.ts` and `InventoryRemoteProtocol.ts`: sanitized networking.
 - `src/server/inventory/WorldPickupMetadata.ts`: tag/attribute contract and distance
@@ -64,10 +75,14 @@ server Instances and item definitions.
 - `WorldPickupClaimService.ts`: authoritative interaction boundary.
 - `InventoryPickupCoordinator.ts`: the public grant-and-quest orchestration boundary.
 - `InventoryProfileService.ts`: inventory facade over the aggregate player profile.
+- `InventoryEquipmentCoordinator.ts`: commits desired equipment state before asking
+  combat to reconcile the character.
 - `InventoryQuestBridge.ts`: one-way publication of successful item grants to quests.
-- `InventoryRemoteService.ts`: rate-limited, read-only snapshots.
+- `InventoryRemoteService.ts`: separately rate-limited snapshot and equipment intents.
 - `src/client/inventory/InventoryHud.ts`: inventory panel and persistent open button.
 - `InventoryClientController.ts`: keyboard/controller/button input and replication.
+- `src/server/weapons/WeaponRuntime.ts`: respawn-safe physical realization and attack
+  authorization against the selected inventory weapon.
 - `src/server/player/`: aggregate quest/inventory lifecycle and persistence adapters.
 
 ## Authoring an item
@@ -86,8 +101,8 @@ Add a stable definition to `InventoryDefinitions.ts`:
 ```
 
 IDs are persistence and cross-system contracts. Do not rename them to change display
-text. Do not add weapon IDs until the inventory/combat integration has been designed
-with explicit equipment ownership.
+text. Weapon definitions must use the `Weapon` category and `Weapon` equipment slot;
+only server-validated owned weapon IDs may be selected.
 
 ## Authoring a world pickup
 
@@ -111,11 +126,20 @@ ID within the shared 128-character limit.
 
 ## State and capacity rules
 
-`InventoryProfile` stores only:
+`InventoryProfile` stores:
 
 - schema version;
 - a map of stable item ID to positive quantity;
-- stable world pickup IDs already claimed by this player.
+- stable world pickup IDs already claimed by this player;
+- a versioned equipment object with an optional selected weapon ID.
+
+New players and legacy profiles receive one `hoplite_sword`, equipped by default.
+Choosing Unequip stores an empty weapon slot and removes the character model and grip
+motor. Choosing Equip validates ownership, persists the selected ID, and asks the
+combat runtime to recreate the sword. Respawns reapply the persisted selection.
+The versioned object is intentionally never an empty Lua table: Roblox JSON encodes
+an empty table as `[]`, which is not a Convex object. Unequipped state is therefore
+`{ schemaVersion: 1 }`, not `{}`.
 
 The current inventory supports 200 distinct item types and 1024 lifetime world
 pickup IDs. Each definition supplies its own maximum quantity. Grants are
@@ -134,9 +158,17 @@ profile. Autosave and disconnect then write both domains with one Convex lease,
 revision, and idempotency key.
 
 Existing quest-only Convex documents remain readable because `inventoryProfile` is
-additive and optional in the table schema. Acquisition supplies an empty inventory
-when the field is absent; the next save writes the aggregate shape. Legacy Roblox
-quest DataStore migration also creates an empty inventory.
+additive and optional in the table schema. Acquisition supplies the starter inventory
+when the field is absent; the next save writes the aggregate shape. Inventory profiles
+from before weapon equipment are migrated additively with one equipped Hoplite Sword.
+An explicit `{ schemaVersion: 1 }` remains unequipped and is never mistaken for a
+legacy profile. If a legacy inventory is already at the 200-item hard limit, it is
+kept intact and loaded unequipped rather than dropping an item or quarantining the
+player. Legacy Roblox quest DataStore migration creates the same starter inventory.
+
+Deploy the Convex schema that makes `equipment` optional before deploying the Roblox
+build that writes it. Keeping the field optional lets old documents and old game
+servers coexist during a rolling deployment.
 
 If decoding or definition validation fails after acquisition, the server calls the
 authenticated abandon endpoint to release the session without overwriting data.
@@ -153,7 +185,9 @@ data, and only then tighten the registry.
 ## Extension rules
 
 - Inventory owns item grants and removals. Quests observe successful grant facts.
-- Combat owns weapon state, attacks, animation, equipping, and Tool behavior.
+- Inventory owns weapon ownership and persistent desired equipment state.
+- Combat owns attack/animation behavior and physical character weapon realization;
+  it must also authorize attacks against inventory's current desired state.
 - Rewards should call an idempotent general grant API, not edit quantities directly.
 - Consuming an item requires an authoritative inventory transaction and a separate
   client intent protocol with rate and state validation.

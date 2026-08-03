@@ -1,12 +1,12 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 
 import { INVENTORY_ITEM_DEFINITIONS } from "./InventoryDefinitions";
-import { claimWorldPickup, createEmptyInventoryProfile } from "./InventoryEngine";
+import { claimWorldPickup, createInitialInventoryProfile, setEquippedWeapon } from "./InventoryEngine";
 import { MAX_CLAIMED_WORLD_PICKUPS, MAX_INVENTORY_ID_LENGTH, MAX_WORLD_PICKUP_ID_LENGTH } from "./InventoryTypes";
 
 describe("InventoryEngine", () => {
 	it("grants a known world pickup immutably and records its transaction", () => {
-		const original = createEmptyInventoryProfile();
+		const original = createInitialInventoryProfile();
 		const result = claimWorldPickup(original, INVENTORY_ITEM_DEFINITIONS, {
 			pickupId: "grove:olive:1",
 			itemId: "sacred_olive_branch",
@@ -20,7 +20,7 @@ describe("InventoryEngine", () => {
 	});
 
 	it("rejects duplicate pickups, unknown items, and malformed grants", () => {
-		const first = claimWorldPickup(createEmptyInventoryProfile(), INVENTORY_ITEM_DEFINITIONS, {
+		const first = claimWorldPickup(createInitialInventoryProfile(), INVENTORY_ITEM_DEFINITIONS, {
 			pickupId: "grove:olive:2",
 			itemId: "sacred_olive_branch",
 			quantity: 1,
@@ -51,7 +51,7 @@ describe("InventoryEngine", () => {
 
 	it("keeps the longest valid pickup transaction within persisted quest ID bounds", () => {
 		const maximumPickupId = string.rep("p", MAX_WORLD_PICKUP_ID_LENGTH);
-		const accepted = claimWorldPickup(createEmptyInventoryProfile(), INVENTORY_ITEM_DEFINITIONS, {
+		const accepted = claimWorldPickup(createInitialInventoryProfile(), INVENTORY_ITEM_DEFINITIONS, {
 			pickupId: maximumPickupId,
 			itemId: "marble_fragment",
 			quantity: 1,
@@ -59,7 +59,7 @@ describe("InventoryEngine", () => {
 		expect(accepted.ok).toBe(true);
 		if (accepted.ok) expect(accepted.event.transactionId.size()).toBe(MAX_INVENTORY_ID_LENGTH);
 		expect(
-			claimWorldPickup(createEmptyInventoryProfile(), INVENTORY_ITEM_DEFINITIONS, {
+			claimWorldPickup(createInitialInventoryProfile(), INVENTORY_ITEM_DEFINITIONS, {
 				pickupId: `${maximumPickupId}x`,
 				itemId: "marble_fragment",
 				quantity: 1,
@@ -69,8 +69,8 @@ describe("InventoryEngine", () => {
 
 	it("applies stack and persisted pickup-history limits atomically", () => {
 		const fullStack = {
-			...createEmptyInventoryProfile(),
-			itemQuantities: { sacred_olive_branch: 99 },
+			...createInitialInventoryProfile(),
+			itemQuantities: { hoplite_sword: 1, sacred_olive_branch: 99 },
 		};
 		expect(
 			claimWorldPickup(fullStack, INVENTORY_ITEM_DEFINITIONS, {
@@ -82,7 +82,7 @@ describe("InventoryEngine", () => {
 
 		const claimedWorldPickupIds = new Array<string>();
 		for (let index = 0; index < MAX_CLAIMED_WORLD_PICKUPS; index++) claimedWorldPickupIds.push(`pickup:${index}`);
-		const fullHistory = { ...createEmptyInventoryProfile(), claimedWorldPickupIds };
+		const fullHistory = { ...createInitialInventoryProfile(), claimedWorldPickupIds };
 		expect(
 			claimWorldPickup(fullHistory, INVENTORY_ITEM_DEFINITIONS, {
 				pickupId: "pickup:overflow",
@@ -90,5 +90,33 @@ describe("InventoryEngine", () => {
 				quantity: 1,
 			}),
 		).toEqual({ ok: false, reason: "PickupHistoryFull" });
+	});
+
+	it("owns and equips the starter sword and supports authoritative unequip/re-equip", () => {
+		const initial = createInitialInventoryProfile();
+		expect(initial.itemQuantities.hoplite_sword).toBe(1);
+		expect(initial.equipment.weapon).toBe("hoplite_sword");
+
+		const unequipped = setEquippedWeapon(initial, INVENTORY_ITEM_DEFINITIONS, undefined);
+		expect(unequipped.ok).toBe(true);
+		if (!unequipped.ok) return;
+		expect(unequipped.profile.equipment.weapon).toBeUndefined();
+		const reequipped = setEquippedWeapon(unequipped.profile, INVENTORY_ITEM_DEFINITIONS, "hoplite_sword");
+		expect(reequipped.ok).toBe(true);
+		if (reequipped.ok) expect(reequipped.profile.equipment.weapon).toBe("hoplite_sword");
+		expect(setEquippedWeapon(initial, INVENTORY_ITEM_DEFINITIONS, "ambrosia_vial")).toEqual({
+			ok: false,
+			reason: "NotEquippable",
+		});
+		expect(
+			setEquippedWeapon({ ...initial, itemQuantities: {} }, INVENTORY_ITEM_DEFINITIONS, "hoplite_sword"),
+		).toEqual({
+			ok: false,
+			reason: "NotOwned",
+		});
+		expect(setEquippedWeapon(initial, INVENTORY_ITEM_DEFINITIONS, "not_registered")).toEqual({
+			ok: false,
+			reason: "UnknownItem",
+		});
 	});
 });
