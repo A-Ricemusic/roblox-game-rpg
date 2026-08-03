@@ -1,13 +1,12 @@
 import { RunService, Workspace } from "@rbxts/services";
 import { LIGHT_SWING_DURATION_SECONDS, sampleLightSwing } from "shared/weapons/SwordMotion";
 
+const RENDER_STEP_NAME = "ProceduralSwordAnimator";
+
 interface ActiveSwing {
 	readonly startedAt: number;
-}
-
-interface AppliedPose {
-	readonly rightShoulder?: CFrame;
-	readonly waist?: CFrame;
+	readonly rightShoulder: Motor6D;
+	readonly waist?: Motor6D;
 }
 
 function findMotor(character: Model, parentName: string, motorName: string): Motor6D | undefined {
@@ -16,41 +15,49 @@ function findMotor(character: Model, parentName: string, motorName: string): Mot
 	return motor?.IsA("Motor6D") === true ? motor : undefined;
 }
 
+function resetSwing(swing: ActiveSwing): void {
+	swing.rightShoulder.Transform = CFrame.identity;
+	if (swing.waist !== undefined) {
+		swing.waist.Transform = CFrame.identity;
+	}
+}
+
 export class ProceduralSwordAnimator {
 	private readonly activeSwings = new Map<Model, ActiveSwing>();
-	private readonly appliedPoses = new Map<Model, AppliedPose>();
-	private readonly animationConnection: RBXScriptConnection;
-	private readonly frameConnection: RBXScriptConnection;
+	private destroyed = false;
 
 	public constructor() {
-		this.animationConnection = RunService.PreAnimation.Connect(() => this.removeAppliedPoses());
-		this.frameConnection = RunService.PreSimulation.Connect(() => this.update());
+		RunService.BindToRenderStep(RENDER_STEP_NAME, Enum.RenderPriority.Character.Value + 1, () => this.update());
 	}
 
-	public playLightSwing(character: Model, startedAt: number): void {
-		this.activeSwings.set(character, { startedAt });
+	public playLightSwing(character: Model, startedAt: number): boolean {
+		if (this.destroyed) {
+			return false;
+		}
+
+		const rightShoulder = findMotor(character, "UpperTorso", "RightShoulder");
+		if (rightShoulder === undefined) {
+			warn(
+				`[WeaponAnimator] ${character.GetFullName()} is missing UpperTorso.RightShoulder; cannot animate sword.`,
+			);
+			return false;
+		}
+
+		const waist = findMotor(character, "LowerTorso", "Waist");
+		this.activeSwings.set(character, { startedAt, rightShoulder, waist });
+		return true;
 	}
 
 	public destroy(): void {
-		this.removeAppliedPoses();
-		this.animationConnection.Disconnect();
-		this.frameConnection.Disconnect();
-		this.activeSwings.clear();
-		this.appliedPoses.clear();
-	}
-
-	private removeAppliedPoses(): void {
-		for (const [character, pose] of this.appliedPoses) {
-			const rightShoulder = findMotor(character, "UpperTorso", "RightShoulder");
-			const waist = findMotor(character, "LowerTorso", "Waist");
-			if (rightShoulder !== undefined && pose.rightShoulder !== undefined) {
-				rightShoulder.Transform = rightShoulder.Transform.mul(pose.rightShoulder.Inverse());
-			}
-			if (waist !== undefined && pose.waist !== undefined) {
-				waist.Transform = waist.Transform.mul(pose.waist.Inverse());
-			}
+		if (this.destroyed) {
+			return;
 		}
-		this.appliedPoses.clear();
+		this.destroyed = true;
+		RunService.UnbindFromRenderStep(RENDER_STEP_NAME);
+		for (const [, swing] of this.activeSwings) {
+			resetSwing(swing);
+		}
+		this.activeSwings.clear();
 	}
 
 	private update(): void {
@@ -64,22 +71,15 @@ export class ProceduralSwordAnimator {
 			const elapsed = math.max(0, now - swing.startedAt);
 			const pose = sampleLightSwing(elapsed);
 			if (pose === undefined || elapsed >= LIGHT_SWING_DURATION_SECONDS) {
+				resetSwing(swing);
 				this.activeSwings.delete(character);
 				continue;
 			}
 
-			const rightShoulder = findMotor(character, "UpperTorso", "RightShoulder");
-			const waist = findMotor(character, "LowerTorso", "Waist");
-			if (rightShoulder !== undefined) {
-				rightShoulder.Transform = rightShoulder.Transform.mul(pose.rightShoulder);
+			swing.rightShoulder.Transform = pose.rightShoulder;
+			if (swing.waist !== undefined) {
+				swing.waist.Transform = pose.waist;
 			}
-			if (waist !== undefined) {
-				waist.Transform = waist.Transform.mul(pose.waist);
-			}
-			this.appliedPoses.set(character, {
-				rightShoulder: rightShoulder !== undefined ? pose.rightShoulder : undefined,
-				waist: waist !== undefined ? pose.waist : undefined,
-			});
 		}
 	}
 }

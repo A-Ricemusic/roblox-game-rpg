@@ -86,9 +86,11 @@ export class WeaponClientController {
 			return false;
 		}
 
+		if (this.animator?.playLightSwing(character, now) !== true) {
+			return false;
+		}
 		this.nextLocalSwingAt = now + LIGHT_SWING_COOLDOWN_SECONDS;
 		this.nextActionId = this.nextActionId >= MAX_WEAPON_ACTION_ID ? 0 : this.nextActionId + 1;
-		this.animator?.playLightSwing(character, now);
 		this.actionRemote?.FireServer({ kind: "LightSwing", actionId: this.nextActionId });
 		return true;
 	}
