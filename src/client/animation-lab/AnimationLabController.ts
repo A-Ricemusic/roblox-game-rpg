@@ -19,6 +19,13 @@ const CAMERA_OFFSETS: Readonly<Record<CameraView, Vector3>> = {
 	ThreeQuarter: new Vector3(10, 3, -10),
 };
 
+const AUTO_CAMERA_VIEWS: Readonly<Record<LightComboStep, CameraView>> = {
+	1: "ThreeQuarter",
+	2: "ThreeQuarter",
+	3: "Side",
+	4: "ThreeQuarter",
+};
+
 function makeLabel(parent: Instance, text: string, size: UDim2, position: UDim2, textSize = 16): TextLabel {
 	const label = new Instance("TextLabel");
 	label.BackgroundTransparency = 1;
@@ -51,10 +58,10 @@ function makeButton(parent: Instance, text: string, position: UDim2, width = 82)
 	return button;
 }
 
-function getTipAttachment(character: Model): Attachment | undefined {
+function getWeaponAttachment(character: Model, attachmentName: string): Attachment | undefined {
 	const weapon = character.FindFirstChild(EQUIPPED_WEAPON_NAME);
-	const tip = weapon?.FindFirstChild("Tip", true);
-	return tip?.IsA("Attachment") === true ? tip : undefined;
+	const attachment = weapon?.FindFirstChild(attachmentName, true);
+	return attachment?.IsA("Attachment") === true ? attachment : undefined;
 }
 
 export class AnimationLabController {
@@ -68,6 +75,8 @@ export class AnimationLabController {
 	private root?: BasePart;
 	private torso?: BasePart;
 	private tip?: Attachment;
+	private bladeStart?: Attachment;
+	private bladeEnd?: Attachment;
 	private gui?: ScreenGui;
 	private titleLabel?: TextLabel;
 	private timeLabel?: TextLabel;
@@ -166,7 +175,9 @@ export class AnimationLabController {
 		humanoid.WalkSpeed = 0;
 		humanoid.AutoRotate = false;
 		root.Anchored = true;
-		this.tip = this.waitForTip(character);
+		this.tip = this.waitForWeaponAttachment(character, "Tip");
+		this.bladeStart = this.waitForWeaponAttachment(character, "HitboxStart");
+		this.bladeEnd = this.waitForWeaponAttachment(character, "HitboxEnd");
 		this.createGui();
 		this.restartStep();
 		this.renderConnection?.Disconnect();
@@ -174,13 +185,15 @@ export class AnimationLabController {
 		print("[AnimationLab] Autonomous review loop started in the current Studio place.");
 	}
 
-	private waitForTip(character: Model): Attachment | undefined {
+	private waitForWeaponAttachment(character: Model, attachmentName: string): Attachment | undefined {
 		for (let attempt = 0; attempt < 100; attempt++) {
-			const tip = getTipAttachment(character);
-			if (tip !== undefined) return tip;
+			const attachment = getWeaponAttachment(character, attachmentName);
+			if (attachment !== undefined) return attachment;
 			task.wait(0.05);
 		}
-		warn("[AnimationLab] Equipped sword has no Tip attachment; trajectory diagnostics are unavailable.");
+		warn(
+			`[AnimationLab] Equipped sword has no ${attachmentName} attachment; trajectory diagnostics are unavailable.`,
+		);
 		return undefined;
 	}
 
@@ -197,6 +210,8 @@ export class AnimationLabController {
 		this.root = undefined;
 		this.torso = undefined;
 		this.tip = undefined;
+		this.bladeStart = undefined;
+		this.bladeEnd = undefined;
 	}
 
 	private update(deltaTime: number): void {
@@ -219,9 +234,13 @@ export class AnimationLabController {
 		this.animator.previewLightSwing(character, this.step, this.elapsedSeconds);
 		if (!this.captureTaken && this.elapsedSeconds >= duration * 0.55) this.captureStrikeFrame();
 		const tip = this.tip;
+		const bladeStart = this.bladeStart;
+		const bladeEnd = this.bladeEnd;
 		const [activeStart, activeEnd] = getLightComboActiveWindow(this.step);
 		if (
 			tip !== undefined &&
+			bladeStart !== undefined &&
+			bladeEnd !== undefined &&
 			this.playing &&
 			this.elapsedSeconds >= activeStart &&
 			this.elapsedSeconds <= activeEnd
@@ -230,6 +249,8 @@ export class AnimationLabController {
 			this.samples.push({
 				elapsedSeconds: this.elapsedSeconds,
 				tipPosition: tip.WorldPosition,
+				bladeStartPosition: bladeStart.WorldPosition,
+				bladeEndPosition: bladeEnd.WorldPosition,
 				torsoPosition: torso.Position,
 			});
 		}
@@ -247,6 +268,7 @@ export class AnimationLabController {
 	}
 
 	private restartStep(): void {
+		if (this.autoCycle) this.cameraView = AUTO_CAMERA_VIEWS[this.step];
 		this.elapsedSeconds = 0;
 		this.holdSeconds = 0;
 		this.playing = true;
@@ -283,7 +305,7 @@ export class AnimationLabController {
 		if (root === undefined || this.reportLabel === undefined) return;
 		const report = evaluateMotionTrajectory(this.step, root.CFrame, this.samples);
 		const issueText = report.issues.isEmpty() ? "PASS: structural checks" : `FAIL: ${report.issues.join(" · ")}`;
-		this.reportLabel.Text = `${issueText}\nTravel X ${string.format("%.2f", report.horizontalTravel)}  Y ${string.format("%.2f", report.verticalTravel)}  Z ${string.format("%.2f", report.forwardTravel)}  Clearance ${string.format("%.2f", report.minimumTorsoClearance)}`;
+		this.reportLabel.Text = `${issueText}\nTravel X ${string.format("%.2f", report.horizontalTravel)}  Y ${string.format("%.2f", report.verticalTravel)}  Z ${string.format("%.2f", report.forwardTravel)}  Tip ${string.format("%.2f", report.minimumTorsoClearance)}  Blade ${string.format("%.2f", report.minimumBladeClearance)}`;
 		print(`[AnimationLab] Attack ${this.step}: ${this.reportLabel.Text}`);
 	}
 

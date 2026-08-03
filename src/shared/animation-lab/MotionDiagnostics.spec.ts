@@ -5,6 +5,8 @@ function makeSamples(points: ReadonlyArray<Vector3>): ReadonlyArray<TrajectorySa
 	return points.map((tipPosition, index) => ({
 		elapsedSeconds: index / 60,
 		tipPosition,
+		bladeStartPosition: tipPosition,
+		bladeEndPosition: tipPosition,
 		torsoPosition: new Vector3(0, 3, 0),
 	}));
 }
@@ -53,5 +55,24 @@ describe("animation lab motion diagnostics", () => {
 		expect(report.passed).toBe(false);
 		expect(report.minimumTorsoClearance).toBe(0);
 		expect(report.issues.join(" ")).toContain("torso safety radius");
+	});
+
+	it("rejects a blade intersection even when the sword tip is clear", () => {
+		const samples = new Array<TrajectorySample>();
+		for (let index = 0; index < 8; index++) {
+			samples.push({
+				elapsedSeconds: index / 60,
+				tipPosition: new Vector3(3, 3, -index * 0.5),
+				bladeStartPosition: new Vector3(-2, 3, 0),
+				bladeEndPosition: new Vector3(2, 3, 0),
+				torsoPosition: new Vector3(0, 3, 0),
+			});
+		}
+		const report = evaluateMotionTrajectory(4, CFrame.identity, samples);
+
+		expect(report.passed).toBe(false);
+		expect(report.minimumTorsoClearance).toBeGreaterThan(2);
+		expect(report.minimumBladeClearance).toBe(0);
+		expect(report.issues.join(" ")).toContain("blade intersects");
 	});
 });
