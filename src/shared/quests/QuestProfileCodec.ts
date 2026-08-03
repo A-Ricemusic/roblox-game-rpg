@@ -1,5 +1,6 @@
 import { ActiveQuestState, ObjectiveProgressState, QuestProfile, QUEST_PROFILE_SCHEMA_VERSION } from "./QuestTypes";
 import { createEmptyQuestProfile } from "./QuestEngine";
+import { asUnknownRecord, isNonNegativeInteger } from "../RuntimeTypeChecks";
 
 export type QuestProfileDecodeResult =
 	| { readonly ok: true; readonly profile: QuestProfile; readonly migrated: boolean }
@@ -7,16 +8,8 @@ export type QuestProfileDecodeResult =
 
 const MAX_PERSISTED_ID_LENGTH = 128;
 
-function asTable(value: unknown): Readonly<Record<string, unknown>> | undefined {
-	return typeIs(value, "table") ? (value as Readonly<Record<string, unknown>>) : undefined;
-}
-
 function isValidId(value: unknown): value is string {
 	return typeIs(value, "string") && value.size() > 0 && value.size() <= MAX_PERSISTED_ID_LENGTH;
-}
-
-function isNonNegativeInteger(value: unknown): value is number {
-	return typeIs(value, "number") && value >= 0 && value < math.huge && math.floor(value) === value;
 }
 
 function isPositiveInteger(value: unknown): value is number {
@@ -41,7 +34,7 @@ function readStringArray(value: unknown, requireUnique = false): string[] | unde
 }
 
 function readObjectiveProgress(value: unknown, legacy: boolean): Record<string, ObjectiveProgressState> | undefined {
-	const record = asTable(value);
+	const record = asUnknownRecord(value);
 	if (record === undefined) {
 		return undefined;
 	}
@@ -57,7 +50,7 @@ function readObjectiveProgress(value: unknown, legacy: boolean): Record<string, 
 			continue;
 		}
 
-		const state = asTable(rawState);
+		const state = asUnknownRecord(rawState);
 		if (state === undefined || !isNonNegativeInteger(state.progress)) {
 			return undefined;
 		}
@@ -71,7 +64,7 @@ function readObjectiveProgress(value: unknown, legacy: boolean): Record<string, 
 }
 
 function readActiveQuests(value: unknown, legacy: boolean): Record<string, ActiveQuestState> | undefined {
-	const record = asTable(value);
+	const record = asUnknownRecord(value);
 	if (record === undefined) {
 		return undefined;
 	}
@@ -82,7 +75,7 @@ function readActiveQuests(value: unknown, legacy: boolean): Record<string, Activ
 			return undefined;
 		}
 
-		const state = asTable(rawState);
+		const state = asUnknownRecord(rawState);
 		if (
 			state === undefined ||
 			state.questId !== questId ||
@@ -122,7 +115,7 @@ export function decodeQuestProfile(value: unknown): QuestProfileDecodeResult {
 		return { ok: true, profile: createEmptyQuestProfile(), migrated: false };
 	}
 
-	const record = asTable(value);
+	const record = asUnknownRecord(value);
 	if (record === undefined || !typeIs(record.schemaVersion, "number")) {
 		return { ok: false, error: "Quest profile must be a table with a numeric schemaVersion." };
 	}

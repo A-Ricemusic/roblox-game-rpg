@@ -1,4 +1,5 @@
 import { isLightComboStep, LightComboStep } from "./LightCombo";
+import { asUnknownRecord, isFiniteNonNegativeNumber } from "../RuntimeTypeChecks";
 
 export interface LightSwingRequest {
 	readonly kind: "LightSwing";
@@ -21,16 +22,9 @@ function isValidActionId(value: unknown): value is number {
 	return typeIs(value, "number") && value >= 0 && value <= MAX_WEAPON_ACTION_ID && math.floor(value) === value;
 }
 
-function isFiniteNonNegativeNumber(value: unknown): value is number {
-	return typeIs(value, "number") && value >= 0 && value < math.huge;
-}
-
 export function parseWeaponActionRequest(value: unknown): WeaponActionRequest | undefined {
-	if (!typeIs(value, "table")) {
-		return undefined;
-	}
-
-	const request = value as Readonly<Record<string, unknown>>;
+	const request = asUnknownRecord(value);
+	if (request === undefined) return undefined;
 	if (request.kind !== "LightSwing" || !isValidActionId(request.actionId)) {
 		return undefined;
 	}

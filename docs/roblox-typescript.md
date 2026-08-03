@@ -7,16 +7,10 @@ written in TypeScript and compiled to Luau with
 
 ## Project status and agent rules
 
-At the time this guide was written, this repository is still the original Luau/Rojo
-starter project. It contains `.lua` files under `src`, has no `package.json` or
-`tsconfig.json`, and `default.project.json` points Rojo directly at `src`. Therefore,
-the TypeScript toolchain still needs to be installed and the starter scripts migrated
-before the policy below can be fully enforced.
-
-The TypeScript-first policy is active immediately. Until migration is complete,
-agents must not extend the legacy Luau layout; they should migrate the relevant
-toolchain/source first or explicitly report that migration as a blocker. Every agent
-must follow these rules:
+The roblox-ts migration is complete. TypeScript source lives under `src`, `rbxtsc`
+emits Luau into `out`, and the Rojo project files map generated output into Roblox.
+`package.json`, `tsconfig.json`, and the lockfile define the pinned toolchain. Every
+agent must follow these rules:
 
 1. Treat files under `src/**/*.ts` and `src/**/*.tsx` as the source of truth.
 2. Do not hand-edit compiler output under `out`; `rbxtsc` regenerates it.

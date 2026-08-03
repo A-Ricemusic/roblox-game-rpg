@@ -7,6 +7,7 @@ import { buildQuestClientViews } from "shared/quests/QuestViewModel";
 import { QuestDefinition, QuestProfile, QuestServerMessage } from "shared/quests/QuestTypes";
 
 import { QuestProfileService } from "./QuestProfileService";
+import { getOrCreateFolder, getOrCreateRemoteEvent } from "server/remotes/RemoteInstanceFactory";
 
 const REQUEST_COOLDOWN_SECONDS = 0.25;
 
@@ -59,20 +60,6 @@ export class QuestRemoteService {
 
 export function getOrCreateQuestRemote(): RemoteEvent {
 	const replicatedStorage = game.GetService("ReplicatedStorage");
-	let folder = replicatedStorage.FindFirstChild(QUEST_REMOTES_FOLDER_NAME);
-	if (folder === undefined) {
-		folder = new Instance("Folder");
-		folder.Name = QUEST_REMOTES_FOLDER_NAME;
-		folder.Parent = replicatedStorage;
-	}
-	assert(folder.IsA("Folder"), `${QUEST_REMOTES_FOLDER_NAME} must be a Folder.`);
-
-	let remote = folder.FindFirstChild(QUEST_REMOTE_EVENT_NAME);
-	if (remote === undefined) {
-		remote = new Instance("RemoteEvent");
-		remote.Name = QUEST_REMOTE_EVENT_NAME;
-		remote.Parent = folder;
-	}
-	assert(remote.IsA("RemoteEvent"), `${QUEST_REMOTE_EVENT_NAME} must be a RemoteEvent.`);
-	return remote;
+	const folder = getOrCreateFolder(replicatedStorage, QUEST_REMOTES_FOLDER_NAME);
+	return getOrCreateRemoteEvent(folder, QUEST_REMOTE_EVENT_NAME);
 }

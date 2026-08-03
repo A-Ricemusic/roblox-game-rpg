@@ -3,32 +3,7 @@ import { parseWeaponActionRequest } from "shared/weapons/WeaponActionProtocol";
 import { WEAPON_ACTION_REMOTE_NAME, WEAPON_REMOTE_FOLDER_NAME } from "shared/weapons/WeaponConstants";
 import { equipSword, findStarterSwordTemplate, hasEquippedStarterSword } from "./SwordEquipService";
 import { WeaponActionGate } from "./WeaponActionGate";
-
-function getOrCreateFolder(parent: Instance, name: string): Folder {
-	const existing = parent.FindFirstChild(name);
-	if (existing !== undefined) {
-		assert(existing.IsA("Folder"), `${existing.GetFullName()} must be a Folder.`);
-		return existing;
-	}
-
-	const folder = new Instance("Folder");
-	folder.Name = name;
-	folder.Parent = parent;
-	return folder;
-}
-
-function getOrCreateRemote(parent: Instance, name: string): RemoteEvent {
-	const existing = parent.FindFirstChild(name);
-	if (existing !== undefined) {
-		assert(existing.IsA("RemoteEvent"), `${existing.GetFullName()} must be a RemoteEvent.`);
-		return existing;
-	}
-
-	const remote = new Instance("RemoteEvent");
-	remote.Name = name;
-	remote.Parent = parent;
-	return remote;
-}
+import { getOrCreateFolder, getOrCreateRemoteEvent } from "server/remotes/RemoteInstanceFactory";
 
 export class WeaponRuntime {
 	private readonly actionGate = new WeaponActionGate();
@@ -42,7 +17,7 @@ export class WeaponRuntime {
 		}
 
 		const remoteFolder = getOrCreateFolder(ReplicatedStorage, WEAPON_REMOTE_FOLDER_NAME);
-		this.actionRemote = getOrCreateRemote(remoteFolder, WEAPON_ACTION_REMOTE_NAME);
+		this.actionRemote = getOrCreateRemoteEvent(remoteFolder, WEAPON_ACTION_REMOTE_NAME);
 		this.runtimeConnections.push(
 			Players.PlayerAdded.Connect((player) => this.registerPlayer(player)),
 			Players.PlayerRemoving.Connect((player) => this.unregisterPlayer(player)),
