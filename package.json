@@ -1,0 +1,36 @@
+{
+  "name": "roblox-game",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A production Roblox game built with roblox-ts.",
+  "license": "UNLICENSED",
+  "type": "commonjs",
+  "scripts": {
+    "build": "rbxtsc",
+    "build:place": "npm run build && rojo build default.project.json --output RobloxGame.rbxlx",
+    "watch": "rbxtsc -w",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test:build": "npm run build && rojo build test.project.json --output test.rbxl",
+    "test": "npm run test:build && jest-roblox --config jest.config.mjs --no-coverage",
+    "test:coverage": "npm run test:build && jest-roblox --config jest.config.mjs --coverage",
+    "test:staging": "npm run test:build && jest-roblox --config jest.staging.config.mjs --no-coverage"
+  },
+  "dependencies": {
+    "@rbxts/services": "1.6.0"
+  },
+  "devDependencies": {
+    "@isentinel/jest-roblox": "0.3.10",
+    "@isentinel/roblox-ts": "3.2.0",
+    "@rbxts/compiler-types": "3.0.0-types.0",
+    "@rbxts/jest": "3.16.0-ts.1",
+    "@rbxts/jest-globals": "3.16.0-ts.1",
+    "@rbxts/types": "1.0.941",
+    "prettier": "3.9.6"
+  },
+  "overrides": {
+    "@isentinel/jest-roblox": {
+      "ws": "8.21.0"
+    }
+  }
+}

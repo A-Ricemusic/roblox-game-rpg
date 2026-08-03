@@ -4,3 +4,16 @@
 # Roblox Studio lock files
 /*.rbxlx.lock
 /*.rbxl.lock
+/*.rbxl
+
+# roblox-ts compiler output and dependencies
+/include/
+/node_modules/
+/out/
+
+# Test runner output
+/.jest-roblox/
+/coverage/
+/test.rbxl
+/game-output.log
+/jest-output.json

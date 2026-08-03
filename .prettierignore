@@ -1,0 +1,10 @@
+node_modules
+out
+include
+coverage
+.jest-roblox
+*.rbxl
+*.rbxlx
+*.rbxm
+*.rbxmx
+docs/*.html
