@@ -22,5 +22,15 @@
 # Local screenshots, recordings, and other generated review output
 /artifacts/
 
+# Blender recovery, autosave, and temporary files. Editable .blend sources and
+# deliberate exports under animation/ remain tracked.
+*.blend[0-9]*
+*.blend@
+/animation/cache/
+/animation/tmp/
+
+# macOS metadata
+.DS_Store
+
 .env.local
 /.convex/
