@@ -5,6 +5,7 @@ import {
 } from "shared/inventory/InventoryRemoteProtocol";
 import { InventoryEquipmentResult, InventoryItemDefinition } from "shared/inventory/InventoryTypes";
 import { buildInventorySnapshot } from "shared/inventory/InventoryViewModel";
+import { getOrCreateFolder, getOrCreateRemoteEvent } from "server/remotes/RemoteInstanceFactory";
 
 import { InventoryProfileService } from "./InventoryProfileService";
 
@@ -70,19 +71,6 @@ export class InventoryRemoteService {
 
 export function getOrCreateInventoryRemote(): RemoteEvent {
 	const replicatedStorage = game.GetService("ReplicatedStorage");
-	let folder = replicatedStorage.FindFirstChild(INVENTORY_REMOTES_FOLDER_NAME);
-	if (folder === undefined) {
-		folder = new Instance("Folder");
-		folder.Name = INVENTORY_REMOTES_FOLDER_NAME;
-		folder.Parent = replicatedStorage;
-	}
-	assert(folder.IsA("Folder"), `${INVENTORY_REMOTES_FOLDER_NAME} must be a Folder.`);
-	let remote = folder.FindFirstChild(INVENTORY_REMOTE_EVENT_NAME);
-	if (remote === undefined) {
-		remote = new Instance("RemoteEvent");
-		remote.Name = INVENTORY_REMOTE_EVENT_NAME;
-		remote.Parent = folder;
-	}
-	assert(remote.IsA("RemoteEvent"), `${INVENTORY_REMOTE_EVENT_NAME} must be a RemoteEvent.`);
-	return remote;
+	const folder = getOrCreateFolder(replicatedStorage, INVENTORY_REMOTES_FOLDER_NAME);
+	return getOrCreateRemoteEvent(folder, INVENTORY_REMOTE_EVENT_NAME);
 }

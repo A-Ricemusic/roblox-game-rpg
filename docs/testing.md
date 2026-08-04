@@ -94,7 +94,9 @@ The current suites cover:
 - collectible attribute validation, stable ID collisions, and interaction distance;
 - server-derived item IDs/quantities and rejection of unregistered or distant claims;
 - read-only remote requests, malformed messages, spoofed progress requests, and request rate limiting;
-- quest view-model snapshots, HUD empty/progress rendering, and malformed client payload handling;
+- quest view-model snapshots, completed journal entries, compact tracker bounds,
+  Active/All filtering, quest selection/fallback, modal coordination, HUD
+  empty/progress rendering, and malformed client payload handling;
 - isolated staging DataStore save/load/remove behavior.
 - Convex leases, expired-session takeover, optimistic revisions, idempotent writes,
   atomic save-and-release, legacy migration state, HTTP authentication, and malformed
@@ -110,6 +112,15 @@ definitions, authoritative distance checks, grant-to-quest orchestration,
 release-time mutation blocking, intent-only equipment remotes with independent rate
 buckets, malformed snapshots, hidden-HUD snapshot caching, physical sword/grip
 removal, equipment controls, and aggregate quest/inventory persistence.
+
+## Player resource UI coverage map
+
+The resource UI suites cover finite-value normalization, clamping, initial full
+stamina/magic presentation, safe-area desktop/touch layouts, stable in-place bar
+updates, live Humanoid health and maximum-health changes, delayed Humanoid binding,
+respawn isolation, and injectable native-health visibility cleanup. Stamina and magic
+remain presentation-only placeholders until a server-authoritative gameplay design is
+implemented.
 
 ## Design rules for new tests
 

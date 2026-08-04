@@ -15,13 +15,13 @@ The implemented slice supports:
 - server-authoritative collection from `CollectionService`-tagged world Instances;
 - per-objective duplicate-source protection and capped progress;
 - multiple simultaneous active quests;
-- display-only snapshots sent to a responsive quest HUD;
+- display-only active/completed snapshots sent to a compact tracker and quest log;
 - schema-validated Convex persistence with legacy DataStore migration;
 - deterministic Roblox Jest coverage plus Convex transaction/API tests.
 
 It does **not** yet implement manual acceptance, abandonment, NPC conversations,
-enemy defeat objectives, turn-in, rewards, repeatable quests, branching, a journal,
-or player-selected pinning. The final stage currently completes immediately and the
+enemy defeat objectives, turn-in, rewards, repeatable quests, branching, or
+persistent player-selected pinning. The final stage currently completes immediately and the
 quest moves from `activeQuests` into `completedQuestIds`. Do not mistake future-state
 examples in the design document for shipped behavior.
 
@@ -98,8 +98,9 @@ originate from server-owned Instances and services.
 
 - `QuestClientController.ts` listens for validated snapshots and requests an initial
   snapshot. It never predicts or mutates quest state.
-- `QuestHud.ts` creates and updates Roblox GUI Instances. It renders only the view
-  supplied by the server.
+- `QuestHud.ts` owns the compact bounded tracker, Active/All quest-log filters, and
+  client-local quest selection. It renders only the sanitized view supplied by the
+  server; selection and expansion are presentation state, not quest progression.
 
 ### Convex (`convex`)
 
@@ -232,10 +233,17 @@ deltas from the client. This is simple, deterministic, and appropriate for the
 current profile size. Revisit replication only after measurements show snapshots are
 materially expensive.
 
-The HUD uses Roblox safe-area insets and reserves the upper-right Core UI lane. UI
-changes must be tested at narrow and wide viewport assumptions and with zero, one,
-and multiple active quests. Treat all received payloads as unknown until parsed by
-`parseQuestServerMessage`.
+The compact `QUESTS` control sits at `(18, 136)`, directly below the Inventory
+control. Its expanded tracker uses a bounded scrolling area, so the active-quest
+limit cannot run the UI off-screen. `MORE QUESTS` opens a centered journal with
+Active and All tracked-quest filters, a scrolling list, and selected quest detail.
+The journal includes completed quest IDs only when an installed definition can
+safely provide display text; it does not reveal untracked future definitions.
+
+The HUD uses Roblox safe-area insets and responsive size constraints. Inventory and
+the quest journal close one another, and combat input is suppressed while either
+modal is open. Test zero, one, multiple, overflow, active, and completed states.
+Treat all received payloads as unknown until parsed by `parseQuestServerMessage`.
 
 ## Tests and quality gates
 
@@ -286,7 +294,9 @@ Before handing off:
   should use the extension procedure above.
 - Completion is immediate. Turn-in and rewards require an idempotent reward service
   and a persisted ready-to-turn-in lifecycle.
-- The HUD is a tracker, not yet a journal or player-controlled pinning system.
+- Journal selection is client-local and resets on a new session. Persistent pinning
+  requires a separate server-validated preference design; do not store it in quest
+  progression state by accident.
 
 ## Code-review follow-ups
 

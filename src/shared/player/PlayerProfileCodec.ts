@@ -2,6 +2,7 @@ import { decodeInventoryProfile } from "shared/inventory/InventoryProfileCodec";
 import { InventoryItemDefinition } from "shared/inventory/InventoryTypes";
 import { decodeQuestProfile } from "shared/quests/QuestProfileCodec";
 import { validateQuestProfileLimits } from "shared/quests/QuestProfileLimits";
+import { asUnknownRecord } from "shared/RuntimeTypeChecks";
 
 import { PlayerProfile, PLAYER_PROFILE_SCHEMA_VERSION } from "./PlayerProfile";
 
@@ -12,8 +13,8 @@ export function decodePlayerProfile(
 	value: unknown,
 	inventoryDefinitions: ReadonlyArray<InventoryItemDefinition>,
 ): PlayerProfileDecodeResult {
-	if (value !== undefined && typeIs(value, "table")) {
-		const record = value as Readonly<Record<string, unknown>>;
+	const record = asUnknownRecord(value);
+	if (record !== undefined) {
 		if (record.inventoryProfile !== undefined && record.questProfile === undefined) {
 			return { ok: false, error: "Aggregate player profile is missing questProfile." };
 		}

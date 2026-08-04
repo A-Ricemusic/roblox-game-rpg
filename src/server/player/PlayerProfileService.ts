@@ -77,17 +77,20 @@ export class PlayerProfileService {
 	public updateQuestProfile(profileKey: string, questProfile: QuestProfile): boolean {
 		const profile = this.profiles.get(profileKey);
 		if (profile === undefined || this.isUnavailable(profileKey)) return false;
-		if (profile.questProfile !== questProfile) this.profiles.set(profileKey, { ...profile, questProfile });
-		if (profile.questProfile !== questProfile) this.markDirty(profileKey);
+		if (profile.questProfile !== questProfile) {
+			this.profiles.set(profileKey, { ...profile, questProfile });
+			this.markDirty(profileKey);
+		}
 		return true;
 	}
 
 	public updateInventoryProfile(profileKey: string, inventoryProfile: InventoryProfile): boolean {
 		const profile = this.profiles.get(profileKey);
 		if (profile === undefined || this.isUnavailable(profileKey)) return false;
-		if (profile.inventoryProfile !== inventoryProfile)
+		if (profile.inventoryProfile !== inventoryProfile) {
 			this.profiles.set(profileKey, { ...profile, inventoryProfile });
-		if (profile.inventoryProfile !== inventoryProfile) this.markDirty(profileKey);
+			this.markDirty(profileKey);
+		}
 		return true;
 	}
 

@@ -5,6 +5,7 @@ import { parseQuestClientRequest, parseQuestServerMessage } from "./QuestRemoteP
 describe("QuestRemoteProtocol", () => {
 	it("allows the read-only snapshot request", () => {
 		expect(parseQuestClientRequest({ kind: "RequestSnapshot" })).toEqual({ kind: "RequestSnapshot" });
+		expect(parseQuestClientRequest({ kind: "RequestSnapshot", questId: "spoof" })).toBeUndefined();
 	});
 
 	it("rejects malformed and client-authored progress requests", () => {
@@ -21,6 +22,8 @@ describe("QuestRemoteProtocol", () => {
 				{
 					questId: "olive",
 					title: "The First Harvest",
+					summary: "Gather an offering.",
+					status: "Active",
 					stageTitle: "Gather",
 					objectives: [{ id: "collect", description: "Collect olives", progress: 1, required: 3 }],
 				},
@@ -36,5 +39,21 @@ describe("QuestRemoteProtocol", () => {
 				],
 			}),
 		).toBeUndefined();
+		expect(
+			parseQuestServerMessage({
+				kind: "Snapshot",
+				quests: [
+					{
+						questId: "done",
+						title: "Completed",
+						summary: "Done.",
+						status: "Completed",
+						stageTitle: "Journey complete",
+						objectives: [],
+					},
+				],
+			}),
+		).toBeDefined();
+		expect(parseQuestServerMessage({ ...snapshot, unexpected: true })).toBeUndefined();
 	});
 });

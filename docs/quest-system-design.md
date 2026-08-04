@@ -50,7 +50,8 @@ items.
 
 Processed source IDs are persisted per objective, progress is capped, and a
 stage-completing event never spills into the next stage. The client receives
-display-only quest snapshots and renders the current stage in `QuestHud`. The initial
+display-only quest snapshots and renders current stages in a compact tracker plus a
+selectable active/completed quest log in `QuestHud`. The initial
 sacred olive branch props were removed from `default.project.json` while the shared
 place serves as an unobstructed Animation Lab; world collectibles can be authored
 again when level design resumes.
@@ -88,8 +89,8 @@ These are the default rules for the initial implementation:
 8. Initial quests are one-time quests. Repeatable quests, branching paths, failure
    states, and timers are later extensions.
 9. Quest definitions are immutable and identified by stable string IDs.
-10. Multiple quests may be active at once, although the UI only needs to pin one
-    quest initially.
+10. Multiple quests may be active at once. The shipped compact tracker can scroll
+    through several, while the full quest log supports client-local selection.
 
 This gives us simple composition:
 

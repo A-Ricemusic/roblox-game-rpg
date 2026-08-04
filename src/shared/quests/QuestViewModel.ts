@@ -16,6 +16,8 @@ export function buildQuestClientViews(
 		views.push({
 			questId,
 			title: definition.title,
+			summary: definition.summary,
+			status: "Active",
 			stageTitle: stage.title,
 			objectives: stage.objectives.map((objective) => ({
 				id: objective.id,
@@ -28,7 +30,23 @@ export function buildQuestClientViews(
 			})),
 		});
 	}
+	for (const questId of profile.completedQuestIds) {
+		if (profile.activeQuests[questId] !== undefined) continue;
+		const definition = definitionsById.get(questId);
+		if (definition === undefined) continue;
+		views.push({
+			questId,
+			title: definition.title,
+			summary: definition.summary,
+			status: "Completed",
+			stageTitle: "Journey complete",
+			objectives: [],
+		});
+	}
 
-	views.sort((left, right) => (left.title === right.title ? left.questId < right.questId : left.title < right.title));
+	views.sort((left, right) => {
+		if (left.status !== right.status) return left.status === "Active";
+		return left.title === right.title ? left.questId < right.questId : left.title < right.title;
+	});
 	return views;
 }

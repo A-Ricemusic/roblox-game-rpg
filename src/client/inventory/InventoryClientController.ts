@@ -68,6 +68,7 @@ export class InventoryClientController {
 		private readonly hud: InventoryHud,
 		private readonly remote: InventoryClientRemote = new RobloxInventoryClientRemote(),
 		private readonly toggleBinding: InventoryToggleBinding = new RobloxInventoryToggleBinding(),
+		private readonly beforeOpen?: () => void,
 	) {}
 
 	public start(): void {
@@ -98,6 +99,7 @@ export class InventoryClientController {
 	}
 
 	public toggle(open: boolean): void {
+		if (open && !this.hud.isOpen()) this.beforeOpen?.();
 		this.hud.setOpen(open);
 		if (open) {
 			if (this.latestSnapshot !== undefined) this.hud.render(this.latestSnapshot);

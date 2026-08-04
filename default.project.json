@@ -69,9 +69,9 @@
 					"$properties": {
 						"Anchored": true,
 						"Attributes": {
-							"InventoryPickupId": {"String": "beta-inventory:olive-branch:01"},
-							"InventoryItemId": {"String": "sacred_olive_branch"},
-							"InventoryItemQuantity": {"Float64": 1}
+							"InventoryPickupId": { "String": "beta-inventory:olive-branch:01" },
+							"InventoryItemId": { "String": "sacred_olive_branch" },
+							"InventoryItemQuantity": { "Float64": 1 }
 						},
 						"CanCollide": false,
 						"Color": [0.32157, 0.56863, 0.16863],
@@ -97,9 +97,9 @@
 					"$properties": {
 						"Anchored": true,
 						"Attributes": {
-							"InventoryPickupId": {"String": "beta-inventory:olive-branch:02"},
-							"InventoryItemId": {"String": "sacred_olive_branch"},
-							"InventoryItemQuantity": {"Float64": 1}
+							"InventoryPickupId": { "String": "beta-inventory:olive-branch:02" },
+							"InventoryItemId": { "String": "sacred_olive_branch" },
+							"InventoryItemQuantity": { "Float64": 1 }
 						},
 						"CanCollide": false,
 						"Color": [0.27451, 0.50588, 0.12941],
@@ -125,9 +125,9 @@
 					"$properties": {
 						"Anchored": true,
 						"Attributes": {
-							"InventoryPickupId": {"String": "beta-inventory:olive-branch:03"},
-							"InventoryItemId": {"String": "sacred_olive_branch"},
-							"InventoryItemQuantity": {"Float64": 1}
+							"InventoryPickupId": { "String": "beta-inventory:olive-branch:03" },
+							"InventoryItemId": { "String": "sacred_olive_branch" },
+							"InventoryItemQuantity": { "Float64": 1 }
 						},
 						"CanCollide": false,
 						"Color": [0.36078, 0.62745, 0.18431],
@@ -153,9 +153,9 @@
 					"$properties": {
 						"Anchored": true,
 						"Attributes": {
-							"InventoryPickupId": {"String": "beta-inventory:marble-fragment:01"},
-							"InventoryItemId": {"String": "marble_fragment"},
-							"InventoryItemQuantity": {"Float64": 2}
+							"InventoryPickupId": { "String": "beta-inventory:marble-fragment:01" },
+							"InventoryItemId": { "String": "marble_fragment" },
+							"InventoryItemQuantity": { "Float64": 2 }
 						},
 						"CanCollide": false,
 						"Color": [0.85882, 0.83922, 0.78824],
@@ -180,9 +180,9 @@
 					"$properties": {
 						"Anchored": true,
 						"Attributes": {
-							"InventoryPickupId": {"String": "beta-inventory:marble-fragment:02"},
-							"InventoryItemId": {"String": "marble_fragment"},
-							"InventoryItemQuantity": {"Float64": 3}
+							"InventoryPickupId": { "String": "beta-inventory:marble-fragment:02" },
+							"InventoryItemId": { "String": "marble_fragment" },
+							"InventoryItemQuantity": { "Float64": 3 }
 						},
 						"CanCollide": false,
 						"Color": [0.75294, 0.74118, 0.7098],
@@ -207,9 +207,9 @@
 					"$properties": {
 						"Anchored": true,
 						"Attributes": {
-							"InventoryPickupId": {"String": "beta-inventory:ambrosia-vial:01"},
-							"InventoryItemId": {"String": "ambrosia_vial"},
-							"InventoryItemQuantity": {"Float64": 1}
+							"InventoryPickupId": { "String": "beta-inventory:ambrosia-vial:01" },
+							"InventoryItemId": { "String": "ambrosia_vial" },
+							"InventoryItemQuantity": { "Float64": 1 }
 						},
 						"CanCollide": false,
 						"Color": [1, 0.69412, 0.10588],

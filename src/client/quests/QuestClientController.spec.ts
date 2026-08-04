@@ -55,6 +55,8 @@ describe("QuestClientController", () => {
 				{
 					questId: "olive",
 					title: "The First Harvest",
+					summary: "Gather an offering.",
+					status: "Active",
 					stageTitle: "Gather",
 					objectives: [{ id: "collect", description: "Collect", progress: 1, required: 3 }],
 				},

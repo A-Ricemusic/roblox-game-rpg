@@ -10,6 +10,7 @@ import {
 } from "./InventoryTypes";
 import { createInitialInventoryProfile } from "./InventoryEngine";
 import { HOPLITE_SWORD_ITEM_ID } from "shared/items/ItemIds";
+import { asUnknownRecord, isNonNegativeInteger } from "shared/RuntimeTypeChecks";
 
 export type InventoryProfileDecodeResult =
 	{ readonly ok: true; readonly profile: InventoryProfile } | { readonly ok: false; readonly error: string };
@@ -49,8 +50,8 @@ function readEquipment(
 	itemQuantities: Readonly<Record<string, number>>,
 	definitionsById: ReadonlyMap<string, InventoryItemDefinition>,
 ): InventoryEquipment | undefined {
-	if (!typeIs(value, "table")) return undefined;
-	const record = value as Readonly<Record<string, unknown>>;
+	const record = asUnknownRecord(value);
+	if (record === undefined) return undefined;
 	for (const [key] of pairs(record)) {
 		if (key !== "schemaVersion" && key !== "weapon") return undefined;
 	}
@@ -67,8 +68,8 @@ export function decodeInventoryProfile(
 	definitions: ReadonlyArray<InventoryItemDefinition>,
 ): InventoryProfileDecodeResult {
 	if (value === undefined) return { ok: true, profile: createInitialInventoryProfile() };
-	if (!typeIs(value, "table")) return { ok: false, error: "Inventory profile must be a table." };
-	const record = value as Readonly<Record<string, unknown>>;
+	const record = asUnknownRecord(value);
+	if (record === undefined) return { ok: false, error: "Inventory profile must be a table." };
 	if (record.schemaVersion !== INVENTORY_PROFILE_SCHEMA_VERSION) {
 		return { ok: false, error: `Unsupported inventory profile schema version '${record.schemaVersion}'.` };
 	}
@@ -85,9 +86,8 @@ export function decodeInventoryProfile(
 		if (
 			!validId(itemId) ||
 			definition === undefined ||
-			!typeIs(quantity, "number") ||
+			!isNonNegativeInteger(quantity) ||
 			quantity < 1 ||
-			math.floor(quantity) !== quantity ||
 			quantity > definition.maxStack
 		) {
 			return { ok: false, error: `Inventory item '${itemId}' has invalid persisted data.` };

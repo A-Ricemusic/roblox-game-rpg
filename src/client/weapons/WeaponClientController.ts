@@ -49,7 +49,12 @@ export class WeaponClientController {
 		}
 		this.actionRemote = remoteCandidate;
 		this.animator = new ProceduralSwordAnimator();
-		this.characterConnection = Players.LocalPlayer.CharacterAdded.Connect(() => this.resetPrediction());
+		this.characterConnection = Players.LocalPlayer.CharacterAdded.Connect((character) => {
+			this.resetPrediction();
+			this.animator?.registerCharacter(character);
+		});
+		const currentCharacter = Players.LocalPlayer.Character;
+		if (currentCharacter !== undefined) this.animator.registerCharacter(currentCharacter);
 		this.remoteConnection = remoteCandidate.OnClientEvent.Connect(
 			(kind: unknown, actor: unknown, actionId: unknown, startedAt: unknown, comboStep: unknown) =>
 				this.handleAcceptedSwing(kind, actor, actionId, startedAt, comboStep),

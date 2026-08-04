@@ -1,3 +1,5 @@
+import { asUnknownRecord, isNonNegativeInteger } from "shared/RuntimeTypeChecks";
+
 import {
 	InventoryClientRequest,
 	InventoryItemClientView,
@@ -15,8 +17,8 @@ function isString(value: unknown): value is string {
 }
 
 export function parseInventoryClientRequest(value: unknown): InventoryClientRequest | undefined {
-	if (!typeIs(value, "table")) return undefined;
-	const request = value as Readonly<Record<string, unknown>>;
+	const request = asUnknownRecord(value);
+	if (request === undefined) return undefined;
 	if (request.kind === "RequestSnapshot") {
 		for (const [key] of pairs(request)) if (key !== "kind") return undefined;
 		return { kind: "RequestSnapshot" };
@@ -33,8 +35,8 @@ export function parseInventoryClientRequest(value: unknown): InventoryClientRequ
 }
 
 function parseItem(value: unknown): InventoryItemClientView | undefined {
-	if (!typeIs(value, "table")) return undefined;
-	const item = value as Readonly<Record<string, unknown>>;
+	const item = asUnknownRecord(value);
+	if (item === undefined) return undefined;
 	if (
 		!isString(item.itemId) ||
 		item.itemId.size() === 0 ||
@@ -46,10 +48,9 @@ function parseItem(value: unknown): InventoryItemClientView | undefined {
 			item.category !== "Quest" &&
 			item.category !== "Weapon" &&
 			item.category !== "Miscellaneous") ||
-		!typeIs(item.quantity, "number") ||
+		!isNonNegativeInteger(item.quantity) ||
 		item.quantity < 1 ||
 		item.quantity > MAX_INVENTORY_STACK_QUANTITY ||
-		math.floor(item.quantity) !== item.quantity ||
 		(item.iconAssetId !== undefined && !isString(item.iconAssetId)) ||
 		(item.equipSlot !== undefined && item.equipSlot !== "Weapon") ||
 		!typeIs(item.equipped, "boolean") ||
@@ -70,18 +71,15 @@ function parseItem(value: unknown): InventoryItemClientView | undefined {
 }
 
 export function parseInventoryServerMessage(value: unknown): InventoryServerMessage | undefined {
-	if (!typeIs(value, "table")) return undefined;
-	const message = value as Readonly<Record<string, unknown>>;
+	const message = asUnknownRecord(value);
+	if (message === undefined) return undefined;
 	if (
 		message.kind !== "Snapshot" ||
 		!typeIs(message.items, "table") ||
-		!typeIs(message.occupiedSlots, "number") ||
-		!typeIs(message.maximumSlots, "number") ||
-		message.occupiedSlots < 0 ||
-		math.floor(message.occupiedSlots) !== message.occupiedSlots ||
-		message.maximumSlots < 0 ||
+		!isNonNegativeInteger(message.occupiedSlots) ||
+		!isNonNegativeInteger(message.maximumSlots) ||
 		message.maximumSlots > MAX_INVENTORY_ITEM_TYPES ||
-		math.floor(message.maximumSlots) !== message.maximumSlots
+		message.occupiedSlots > message.maximumSlots
 	) {
 		return undefined;
 	}
@@ -100,7 +98,7 @@ export function parseInventoryServerMessage(value: unknown): InventoryServerMess
 		if (item === undefined) return undefined;
 		items.push(item);
 	}
-	if (message.occupiedSlots !== items.size() || message.occupiedSlots > message.maximumSlots) return undefined;
+	if (message.occupiedSlots !== items.size()) return undefined;
 	return {
 		kind: "Snapshot",
 		items,

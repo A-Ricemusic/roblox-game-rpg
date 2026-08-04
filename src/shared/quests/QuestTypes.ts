@@ -82,9 +82,13 @@ export interface QuestEngineResult {
 
 export type QuestClientRequest = { readonly kind: "RequestSnapshot" };
 
+export type QuestClientStatus = "Active" | "Completed";
+
 export type QuestClientView = Readonly<{
 	questId: QuestId;
 	title: string;
+	summary: string;
+	status: QuestClientStatus;
 	stageTitle: string;
 	objectives: ReadonlyArray<{
 		id: QuestObjectiveId;

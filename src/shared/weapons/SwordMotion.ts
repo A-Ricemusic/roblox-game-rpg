@@ -281,7 +281,7 @@ const motions: Readonly<Record<LightComboStep, SwordMotionDefinition>> = {
 	},
 	4: {
 		duration: 1.3,
-		activeWindow: [0.22, 1],
+		activeWindow: [0.22, 0.97],
 		keyframes: [
 			pose(0, {}),
 			pose(0.12, {
@@ -313,9 +313,9 @@ const motions: Readonly<Record<LightComboStep, SwordMotionDefinition>> = {
 				leftKnee: rotation(-10, 0, 0),
 			}),
 			pose(
-				0.34,
+				0.48,
 				{
-					root: new CFrame(0, -0.08, 0).mul(rotation(0, 80, 0)),
+					root: new CFrame(0, -0.08, 0).mul(rotation(0, 35, 0)),
 					waist: rotation(-5, 0, 0),
 					neck: rotation(3, 0, 0),
 					rightShoulder: rotation(90, 0, -7),
@@ -331,9 +331,9 @@ const motions: Readonly<Record<LightComboStep, SwordMotionDefinition>> = {
 				"EaseIn",
 			),
 			pose(
-				0.52,
+				0.67,
 				{
-					root: new CFrame(0, -0.08, 0).mul(rotation(0, 170, 0)),
+					root: new CFrame(0, -0.08, 0).mul(rotation(0, 100, 0)),
 					waist: rotation(-5, 0, 0),
 					neck: rotation(3, 0, 0),
 					rightShoulder: rotation(90, 0, -7),
@@ -347,9 +347,9 @@ const motions: Readonly<Record<LightComboStep, SwordMotionDefinition>> = {
 				"Linear",
 			),
 			pose(
-				0.7,
+				0.81,
 				{
-					root: new CFrame(0, -0.06, 0).mul(rotation(0, 260, 0)),
+					root: new CFrame(0, -0.06, 0).mul(rotation(0, 190, 0)),
 					waist: rotation(-5, 0, 0),
 					neck: rotation(3, 0, 0),
 					rightShoulder: rotation(90, 0, -7),
@@ -363,9 +363,9 @@ const motions: Readonly<Record<LightComboStep, SwordMotionDefinition>> = {
 				"Linear",
 			),
 			pose(
-				0.86,
+				0.91,
 				{
-					root: new CFrame(0, -0.03, -0.12).mul(rotation(0, 350, 0)),
+					root: new CFrame(0, -0.03, -0.12).mul(rotation(0, 290, 0)),
 					waist: rotation(-5, 0, 0),
 					neck: rotation(3, 0, 0),
 					rightShoulder: rotation(90, 0, -7),
@@ -379,7 +379,7 @@ const motions: Readonly<Record<LightComboStep, SwordMotionDefinition>> = {
 				"Linear",
 			),
 			pose(
-				1,
+				0.97,
 				{
 					root: new CFrame(0, -0.03, -0.05).mul(rotation(0, 359, 0)),
 					waist: rotation(-2, 0, 0),
@@ -395,7 +395,7 @@ const motions: Readonly<Record<LightComboStep, SwordMotionDefinition>> = {
 				"EaseOut",
 			),
 			pose(
-				1.14,
+				1.12,
 				{
 					root: new CFrame(0, -0.02, -0.02).mul(rotation(0, 359, 0)),
 					waist: rotation(-2, 0, 0),

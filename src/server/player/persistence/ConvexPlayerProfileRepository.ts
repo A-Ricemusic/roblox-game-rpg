@@ -1,4 +1,5 @@
 import { PlayerProfile } from "shared/player/PlayerProfile";
+import { asUnknownRecord, isNonNegativeInteger, UnknownRecord } from "shared/RuntimeTypeChecks";
 
 import { ConvexHttpResult, ConvexHttpTransport } from "server/quests/persistence/ConvexHttpTransport";
 import { QuestProfileRepository } from "server/quests/persistence/QuestProfileRepository";
@@ -28,21 +29,11 @@ interface PendingWrite {
 	readonly profile: PlayerProfile;
 }
 
-interface ResponseRecord {
-	readonly [key: string]: unknown;
-}
-
 type RepositoryFailure = { readonly ok: false; readonly error: string; readonly retryable: boolean };
 
-function asRecord(value: unknown): ResponseRecord | undefined {
-	return typeIs(value, "table") ? (value as ResponseRecord) : undefined;
-}
-
-function readRevision(record: ResponseRecord | undefined): number | undefined {
+function readRevision(record: UnknownRecord | undefined): number | undefined {
 	const value = record?.revision;
-	return typeIs(value, "number") && value >= 0 && value < math.huge && math.floor(value) === value
-		? value
-		: undefined;
+	return isNonNegativeInteger(value) ? value : undefined;
 }
 
 function requestFailure(result: ConvexHttpResult, operation: string): RepositoryFailure | undefined {
@@ -104,7 +95,7 @@ export class ConvexPlayerProfileRepository implements PlayerProfileRepository {
 			leaseSeconds: this.options.leaseSeconds,
 		});
 		if (!response.ok) return response;
-		const body = asRecord(response.body);
+		const body = asUnknownRecord(response.body);
 		if (response.statusCode === 409 && body?.status === "leased") {
 			return { ok: false, error: `Profile '${profileKey}' is active on another server.`, retryable: true };
 		}
@@ -153,7 +144,7 @@ export class ConvexPlayerProfileRepository implements PlayerProfileRepository {
 				leaseSeconds: this.options.leaseSeconds,
 			});
 			if (!response.ok) return response;
-			const body = asRecord(response.body);
+			const body = asUnknownRecord(response.body);
 			if (response.statusCode === 409) {
 				this.clearSession(profileKey);
 				return {
@@ -192,7 +183,7 @@ export class ConvexPlayerProfileRepository implements PlayerProfileRepository {
 		this.pendingAbandons.set(profileKey, operationId);
 		const response = this.transport.post(ABANDON_PATH, { profileKey, sessionId, operationId });
 		if (!response.ok) return response;
-		const body = asRecord(response.body);
+		const body = asUnknownRecord(response.body);
 		if (response.statusCode === 409 && body?.status === "session_conflict") {
 			this.clearSession(profileKey);
 			return { ok: true, value: undefined };
@@ -236,7 +227,7 @@ export class ConvexPlayerProfileRepository implements PlayerProfileRepository {
 		if (!release) body.leaseSeconds = this.options.leaseSeconds;
 		const response = this.transport.post(release ? RELEASE_PATH : SAVE_PATH, body);
 		if (!response.ok) return response;
-		const responseBody = asRecord(response.body);
+		const responseBody = asUnknownRecord(response.body);
 		if (response.statusCode === 409) {
 			operations.delete(profileKey);
 			this.clearSession(profileKey);

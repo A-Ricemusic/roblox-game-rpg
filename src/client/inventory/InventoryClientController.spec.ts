@@ -130,4 +130,19 @@ describe("InventoryClientController", () => {
 		controller.setWeaponEquipped(undefined);
 		expect(remote.equipmentRequests).toEqual([{ itemId: "hoplite_sword" }, {}]);
 	});
+
+	it("notifies the shared modal coordinator before Inventory opens", () => {
+		parent = new Instance("Folder");
+		hud = new InventoryHud(parent);
+		remote = new FakeRemote();
+		let beforeOpenCalls = 0;
+		controller = new InventoryClientController(hud, remote, new FakeBinding(), () => (beforeOpenCalls += 1));
+		controller.start();
+		controller.toggle(true);
+		controller.toggle(true);
+		expect(beforeOpenCalls).toBe(1);
+		controller.toggle(false);
+		controller.toggle(true);
+		expect(beforeOpenCalls).toBe(2);
+	});
 });
