@@ -49,6 +49,7 @@
 		},
 
 		"Workspace": {
+			"$ignoreUnknownInstances": true,
 			"$properties": {
 				"FilteringEnabled": true
 			},
@@ -56,11 +57,15 @@
 				"$className": "Part",
 				"$properties": {
 					"Anchored": true,
-					"Color": [0.38823, 0.37254, 0.38823],
+					"Color": [0.32, 0.25, 0.16],
 					"Locked": true,
-					"Position": [0, -10, 0],
+					"Material": "Sand",
+					"Position": [0, -12, 0],
 					"Size": [512, 20, 512]
 				}
+			},
+			"GreekWorld": {
+				"$path": "src/world/world.project.json"
 			},
 			"BetaInventoryPickups": {
 				"$className": "Folder",
@@ -214,7 +219,7 @@
 						"CanCollide": false,
 						"Color": [1, 0.69412, 0.10588],
 						"Material": "Neon",
-						"Position": [0, 1.5, 20],
+						"Position": [-10, 4.7, 20],
 						"Size": [1.2, 3, 1.2],
 						"Tags": ["InventoryPickup"]
 					},
@@ -233,11 +238,34 @@
 		},
 		"Lighting": {
 			"$properties": {
-				"Ambient": [0, 0, 0],
-				"Brightness": 2,
+				"Ambient": [0.25, 0.22, 0.2],
+				"Brightness": 2.5,
+				"ClockTime": 9.5,
+				"EnvironmentDiffuseScale": 0.35,
+				"EnvironmentSpecularScale": 0.5,
 				"GlobalShadows": true,
+				"OutdoorAmbient": [0.5, 0.52, 0.58],
 				"Outlines": false,
-				"Technology": "Voxel"
+				"ShadowSoftness": 0.25,
+				"Technology": "ShadowMap"
+			},
+			"MediterraneanAtmosphere": {
+				"$className": "Atmosphere",
+				"$properties": {
+					"Color": [0.78, 0.84, 0.92],
+					"Decay": [0.42, 0.48, 0.58],
+					"Density": 0.22,
+					"Glare": 0.12,
+					"Haze": 1.3,
+					"Offset": 0.05
+				}
+			},
+			"SunRays": {
+				"$className": "SunRaysEffect",
+				"$properties": {
+					"Intensity": 0.08,
+					"Spread": 0.65
+				}
 			}
 		},
 		"SoundService": {

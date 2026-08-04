@@ -1,0 +1,10 @@
+{
+	"name": "GreekWorld",
+	"tree": {
+		"$className": "Model",
+		"$ignoreUnknownInstances": false,
+		"StartingArea": {
+			"$path": "starting-area/starting-area.project.json"
+		}
+	}
+}

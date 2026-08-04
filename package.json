@@ -11,6 +11,8 @@
 	"scripts": {
 		"build": "rbxtsc",
 		"build:place": "npm run build && rojo build default.project.json --output RobloxGame.rbxlx",
+		"world:generate": "node scripts/generate-greek-starting-area.mjs",
+		"world:check": "node scripts/generate-greek-starting-area.mjs --check",
 		"watch": "rbxtsc -w",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
