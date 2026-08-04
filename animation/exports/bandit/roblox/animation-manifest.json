@@ -1,0 +1,21 @@
+{
+	"creatorId": "3407487520",
+	"creatorType": "userId",
+	"assets": {
+		"BanditIdle": {
+			"assetId": "72885592572346",
+			"contentHash": "64deae3e0aeaba8dada1b2a70e7dcb7b927bce4f43476ad33104f1a9de33d5cc",
+			"source": "roblox/BanditIdle.rbxmx"
+		},
+		"BanditRun": {
+			"assetId": "90657540114064",
+			"contentHash": "7d9d603dd30cd44a64c4aac46865e0761f1e23daa842dbb12e74157baa3b3f6c",
+			"source": "roblox/BanditRun.rbxmx"
+		},
+		"BanditAttack": {
+			"assetId": "72279573649472",
+			"contentHash": "838ef42fce384390544d5bbd430c4ecd2431832b64435ecbee3847112fe0ce88",
+			"source": "roblox/BanditAttack.rbxmx"
+		}
+	}
+}

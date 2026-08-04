@@ -1,4 +1,4 @@
-import { Players, ProximityPromptService } from "@rbxts/services";
+import { CollectionService, Players, ProximityPromptService } from "@rbxts/services";
 
 import { QUEST_DEFINITIONS } from "shared/quests/QuestDefinitions";
 import { assertValidQuestDefinitions } from "shared/quests/QuestDefinitionValidator";
@@ -21,6 +21,9 @@ import { ResilientPlayerProfileStore } from "./player/persistence/ResilientPlaye
 import { QuestProfileService } from "./quests/QuestProfileService";
 import { getOrCreateQuestRemote, QuestRemoteService } from "./quests/QuestRemoteService";
 import { WeaponRuntime } from "./weapons/WeaponRuntime";
+import { BanditEnemySystem } from "./enemies/BanditEnemySystem";
+import { BANDIT_TAG } from "./enemies/BanditConstants";
+import { createBandit } from "./enemies/BanditFactory";
 
 const AUTOSAVE_INTERVAL_SECONDS = 60;
 const SHUTDOWN_LOAD_DRAIN_SECONDS = 10;
@@ -66,6 +69,7 @@ const collectiblePromptRouter = new CollectiblePromptRouter(
 	claims,
 );
 const loadingProfileKeys = new Set<string>();
+const bandits = new BanditEnemySystem();
 let closing = false;
 
 registry.start();
@@ -73,6 +77,11 @@ pickupRegistry.start();
 const remoteConnection = remotes.start(profileKey);
 const inventoryRemoteConnection = inventoryRemotes.start(profileKey);
 weapons.start();
+bandits.start();
+if (game.Workspace.GetAttribute("DisableDemoBandit") !== true && CollectionService.GetTagged(BANDIT_TAG).size() === 0) {
+	const demoBandit = createBandit(new CFrame(0, 5, 24));
+	demoBandit.Parent = game.Workspace;
+}
 
 function loadPlayer(player: Player): void {
 	const key = profileKey(player);
@@ -163,6 +172,7 @@ game.BindToClose(() => {
 	registry.stop();
 	pickupRegistry.stop();
 	weapons.stop();
+	bandits.stop();
 	const loadDrainDeadline = os.clock() + SHUTDOWN_LOAD_DRAIN_SECONDS;
 	while (loadingProfileKeys.size() > 0 && os.clock() < loadDrainDeadline) task.wait(0.05);
 	if (loadingProfileKeys.size() > 0) {
