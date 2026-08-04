@@ -1,0 +1,26 @@
+{
+	"creatorId": "3407487520",
+	"creatorType": "userId",
+	"assets": {
+		"SwordAttack01_DownwardDiagonal": {
+			"assetId": "83182657464711",
+			"contentHash": "594b3eeb9fcfac4cd24987d56dbb905c829dedff28066c43bfa43e0b2953ca15",
+			"source": "SwordAttack01_DownwardDiagonal.rbxmx"
+		},
+		"SwordAttack02_RisingDiagonal": {
+			"assetId": "70892634115680",
+			"contentHash": "74564830d24a985b3593365b9ca827f33811c24430c524d7ef4de736a836e69b",
+			"source": "SwordAttack02_RisingDiagonal.rbxmx"
+		},
+		"SwordAttack03_ForwardThrust": {
+			"assetId": "126076962540032",
+			"contentHash": "41e328ceb750b91aaf6f57a1dab7d4056f0063a04e42cda1f6ff99aeddb7b917",
+			"source": "SwordAttack03_ForwardThrust.rbxmx"
+		},
+		"SwordAttack04_Whirlwind": {
+			"assetId": "135731593516669",
+			"contentHash": "c4f9d955d26c31e17f84f7e6cc6201e51627d8f2dd6e244d1ec327f47447966b",
+			"source": "SwordAttack04_Whirlwind.rbxmx"
+		}
+	}
+}

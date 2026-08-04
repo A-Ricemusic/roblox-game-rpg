@@ -15,6 +15,7 @@
 		"world:check": "node scripts/generate-greek-starting-area.mjs --check",
 		"world:assets:upload": "node --env-file-if-exists=.env.local scripts/upload-greek-assets.mjs",
 		"bandit:animations:upload": "node --env-file-if-exists=.env.local scripts/upload-bandit-animations.mjs",
+		"hoplite:animations:upload": "node --env-file-if-exists=.env.local scripts/upload-hoplite-animations.mjs",
 		"watch": "rbxtsc -w",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",

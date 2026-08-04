@@ -1,10 +1,13 @@
 import bpy
 import math
 import os
-from mathutils import Vector
+from html import escape
+from mathutils import Matrix, Vector
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BLEND_PATH = os.path.join(ROOT, "animation", "blender", "HopliteR15.blend")
+EXPORT_ROOT = os.path.join(ROOT, "animation", "exports")
+ROBLOX_EXPORT_ROOT = os.path.join(EXPORT_ROOT, "hoplite", "roblox")
 RENDER_ROOT = os.path.join(ROOT, "artifacts", "blender-renders")
 
 def rad(v):
@@ -257,6 +260,95 @@ def render_contacts(rig):
         bpy.context.scene.render.filepath = os.path.join(RENDER_ROOT, f"{name}_contact.png")
         bpy.ops.render.render(write_still=True)
 
+def export_actions(rig):
+    os.makedirs(EXPORT_ROOT, exist_ok=True)
+    bpy.ops.object.select_all(action="DESELECT")
+    rig.select_set(True)
+    bpy.context.view_layer.objects.active = rig
+    for action_name in (
+        "SwordAttack01_DownwardDiagonal",
+        "SwordAttack02_RisingDiagonal",
+        "SwordAttack03_ForwardThrust",
+        "SwordAttack04_Whirlwind",
+    ):
+        rig.animation_data.action = bpy.data.actions[action_name]
+        end = int(rig.animation_data.action.get("frame_end", 24))
+        bpy.context.scene.frame_start = 1
+        bpy.context.scene.frame_end = end
+        bpy.ops.export_scene.fbx(
+            filepath=os.path.join(EXPORT_ROOT, f"{action_name}.fbx"),
+            use_selection=True,
+            object_types={"ARMATURE"},
+            add_leaf_bones=False,
+            bake_anim=True,
+            bake_anim_use_all_bones=True,
+            bake_anim_use_nla_strips=False,
+            bake_anim_use_all_actions=False,
+            bake_anim_force_startend_keying=True,
+            bake_anim_simplify_factor=0.0,
+        )
+
+def coordinate_frame(matrix):
+    # Blender uses Z-up with forward along -Y. Roblox uses Y-up with forward
+    # along -Z, so conjugate the local pose delta into Roblox coordinates.
+    basis = matrix.__class__(((1, 0, 0, 0), (0, 0, 1, 0), (0, -1, 0, 0), (0, 0, 0, 1)))
+    converted = basis @ matrix @ basis.inverted()
+    location = converted.to_translation()
+    rotation = converted.to_3x3()
+    values = {
+        "X": location.x, "Y": location.y, "Z": location.z,
+        "R00": rotation[0][0], "R01": rotation[0][1], "R02": rotation[0][2],
+        "R10": rotation[1][0], "R11": rotation[1][1], "R12": rotation[1][2],
+        "R20": rotation[2][0], "R21": rotation[2][1], "R22": rotation[2][2],
+    }
+    fields = "".join(f"<{name}>{0 if abs(value) < 1e-9 else value:.9g}</{name}>" for name, value in values.items())
+    return f'<CoordinateFrame name="CFrame">{fields}</CoordinateFrame>'
+
+def pose_xml(rig, bone, indent):
+    children = "".join(pose_xml(rig, child, indent + "\t") for child in bone.children)
+    transform_matrix = rig.pose.bones[bone.name].matrix_basis
+    if bone.name == "HumanoidRootPart":
+        # The outer R15 pose only identifies the rig root; no Motor6D consumes
+        # its transform. RootJoint motion belongs on the LowerTorso child pose.
+        transform_matrix = Matrix.Identity(4)
+    elif bone.name == "LowerTorso" and bone.parent and bone.parent.name == "HumanoidRootPart":
+        transform_matrix = rig.pose.bones[bone.parent.name].matrix_basis @ transform_matrix
+    transform = coordinate_frame(transform_matrix)
+    return (
+        f'{indent}<Item class="Pose"><Properties>{transform}'
+        f'<token name="EasingDirection">0</token><token name="EasingStyle">0</token>'
+        f'<string name="Name">{escape(bone.name)}</string><float name="Weight">1</float>'
+        f'</Properties>{children}{indent}</Item>'
+    )
+
+def export_roblox_sequences(rig):
+    os.makedirs(ROBLOX_EXPORT_ROOT, exist_ok=True)
+    root_bones = [bone for bone in rig.data.bones if bone.parent is None]
+    for action_name in (
+        "SwordAttack01_DownwardDiagonal",
+        "SwordAttack02_RisingDiagonal",
+        "SwordAttack03_ForwardThrust",
+        "SwordAttack04_Whirlwind",
+    ):
+        rig.animation_data.action = bpy.data.actions[action_name]
+        end = int(rig.animation_data.action.get("frame_end", 24))
+        keyframes = []
+        for frame in range(1, end + 1):
+            bpy.context.scene.frame_set(frame)
+            poses = "".join(pose_xml(rig, bone, "\t\t") for bone in root_bones)
+            keyframes.append(
+                f'\t<Item class="Keyframe"><Properties><string name="Name">Keyframe{frame}</string>'
+                f'<float name="Time">{(frame - 1) / 24:.9g}</float></Properties>{poses}\t</Item>'
+            )
+        xml = (
+            '<roblox version="4"><Item class="KeyframeSequence"><Properties>'
+            '<bool name="Loop">false</bool>'
+            f'<string name="Name">{escape(action_name)}</string><token name="Priority">2</token>'
+            f'</Properties>{"".join(keyframes)}</Item></roblox>\n'
+        )
+        with open(os.path.join(ROBLOX_EXPORT_ROOT, f"{action_name}.rbxmx"), "w", encoding="utf-8") as output:
+            output.write(xml)
+
 def main():
     clear_scene()
     rig = create_armature()
@@ -270,6 +362,8 @@ def main():
     os.makedirs(os.path.dirname(BLEND_PATH), exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=BLEND_PATH)
     render_contacts(rig)
+    export_actions(rig)
+    export_roblox_sequences(rig)
     bpy.ops.wm.save_as_mainfile(filepath=BLEND_PATH)
 
 main()
