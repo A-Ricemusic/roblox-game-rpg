@@ -11,7 +11,6 @@ import {
 	WEAPON_ACTION_REMOTE_NAME,
 	WEAPON_REMOTE_FOLDER_NAME,
 } from "shared/weapons/WeaponConstants";
-import { ProceduralSwordAnimator } from "./ProceduralSwordAnimator";
 
 const LIGHT_SWING_ACTION = "HopliteSwordLightSwing";
 const COMBAT_INPUT_PRIORITY = 2_500;
@@ -23,7 +22,6 @@ interface PendingPrediction {
 }
 
 export class WeaponClientController {
-	private animator?: ProceduralSwordAnimator;
 	private remoteConnection?: RBXScriptConnection;
 	private characterConnection?: RBXScriptConnection;
 	private actionRemote?: RemoteEvent;
@@ -48,13 +46,7 @@ export class WeaponClientController {
 			error(`${remoteCandidate.GetFullName()} must be a RemoteEvent.`);
 		}
 		this.actionRemote = remoteCandidate;
-		this.animator = new ProceduralSwordAnimator();
-		this.characterConnection = Players.LocalPlayer.CharacterAdded.Connect((character) => {
-			this.resetPrediction();
-			this.animator?.registerCharacter(character);
-		});
-		const currentCharacter = Players.LocalPlayer.Character;
-		if (currentCharacter !== undefined) this.animator.registerCharacter(currentCharacter);
+		this.characterConnection = Players.LocalPlayer.CharacterAdded.Connect(() => this.resetPrediction());
 		this.remoteConnection = remoteCandidate.OnClientEvent.Connect(
 			(kind: unknown, actor: unknown, actionId: unknown, startedAt: unknown, comboStep: unknown) =>
 				this.handleAcceptedSwing(kind, actor, actionId, startedAt, comboStep),
@@ -92,8 +84,6 @@ export class WeaponClientController {
 		this.characterConnection?.Disconnect();
 		this.characterConnection = undefined;
 		this.actionRemote = undefined;
-		this.animator?.destroy();
-		this.animator = undefined;
 		this.resetPrediction();
 	}
 
@@ -114,9 +104,6 @@ export class WeaponClientController {
 		}
 
 		const advance = advanceLightCombo(this.predictedCombo, now);
-		if (this.animator?.playLightSwing(character, now, advance.step) !== true) {
-			return false;
-		}
 		this.predictedCombo = advance.state;
 		this.nextLocalSwingAt = now + LIGHT_COMBO_MINIMUM_INTERVALS[advance.step];
 		this.nextActionId = this.nextActionId >= MAX_WEAPON_ACTION_ID ? 0 : this.nextActionId + 1;
@@ -137,19 +124,8 @@ export class WeaponClientController {
 			return;
 		}
 		if (accepted.actor === Players.LocalPlayer) {
-			const prediction = this.predictedStepsByActionId.get(accepted.actionId);
 			this.predictedStepsByActionId.delete(accepted.actionId);
-			if (prediction?.step !== accepted.comboStep) {
-				const character = accepted.actor.Character;
-				if (character !== undefined)
-					this.animator?.playLightSwing(character, accepted.startedAt, accepted.comboStep);
-			}
 			return;
-		}
-
-		const character = accepted.actor.Character;
-		if (character !== undefined) {
-			this.animator?.playLightSwing(character, accepted.startedAt, accepted.comboStep);
 		}
 	}
 

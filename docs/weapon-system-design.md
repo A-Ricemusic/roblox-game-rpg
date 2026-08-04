@@ -1,9 +1,16 @@
 # Weapon System Design
 
-Status: spawn/equip and four-hit procedural light combo implemented  
+Status: spawn/equip and server-sequenced four-step light input implemented; visual attack animation and damage are not implemented
 First weapon: one-handed Greek sword, no shield  
 Primary platform: mobile, with keyboard and mouse support for development  
 Implementation direction: TypeScript with `roblox-ts`
+
+> Current implementation note: the earlier procedural animation prototype and its
+> development-only Animation Lab have been removed. The client still sends validated
+> light-attack intent, and the server still sequences and broadcasts combo steps, but
+> no shipped client currently renders those accepted actions. Sections describing
+> authored animation, hit detection, damage, heavy attacks, and blocking are target
+> architecture unless the “Implemented first slice” section explicitly says otherwise.
 
 ## 1. Goal
 
@@ -18,7 +25,7 @@ The first playable slice supports:
 - A four-step light combo that can stop after any strike.
 - A charged heavy attack produced by holding and releasing Attack.
 - Hold-to-block behavior.
-- Procedural character poses and transitions.
+- Authored R15 character animations imported from Blender.
 - Server-authoritative attack timing, hit detection, blocking, damage, and death.
 - Touch controls designed first, with mouse and keyboard equivalents.
 - A weapon asset contract that can later support two-handed weapons, shields, bows,
@@ -40,7 +47,7 @@ Those features should fit the architecture later but are not MVP requirements.
 5. The primary hand owns the physical weapon connection through one custom
    `Motor6D`. Character body joints are separate and may be either modern
    `AnimationConstraint` objects or legacy `Motor6D` objects.
-6. Character combat motion is produced by a reusable procedural pose engine.
+6. Character combat motion uses reusable authored AnimationTrack assets.
 7. Each client animates combatants locally from replicated action events; the server
    does not stream joint transforms every frame.
 8. The server independently owns combat state and resolves hits. A client never
@@ -306,96 +313,27 @@ Important rules:
 - Every swing records targets already hit so one target is damaged at most once.
 - State transitions have server timestamps so clients can render the same action.
 
-The local player's client predicts presentation immediately, but an authoritative
-server rejection must blend the character back to the server state.
+The local player's client may predict authored animation playback immediately, but an
+authoritative server rejection must stop or blend out that track.
 
-## 9. Procedural animation system
+## 9. Authored animation system
 
-The goal is to avoid authoring and uploading a unique AnimationTrack for every attack.
-Procedural animation is built from reusable poses, timed phases, and blending curves.
+Combat motion is authored on an R15-compatible rig in Blender and exported as one FBX
+action per move. Each action must include deliberate anticipation, contact,
+follow-through, recovery, hip rotation, weight transfer, and foot planting. Automated
+multi-angle playblasts are reviewed before an action is imported into Roblox.
 
-### Pose definition
+Studio's Animation Editor imports and publishes the FBX actions. Typed shared weapon
+configuration stores their animation asset IDs and timing markers. At runtime, each
+client loads those assets through the character's `Animator`, uses Action priority,
+and plays the authoritative combo step at the server-provided time offset. Animation
+markers identify active hit windows, effects, and sound cues; the server remains the
+authority for hit geometry and damage.
 
-A pose contains offsets for selected R15 joints rather than a keyframe for every body
-part. Unspecified joints retain locomotion or their neutral offset.
-
-```ts
-interface ProceduralPose {
-    readonly waist?: CFrame;
-    readonly neck?: CFrame;
-    readonly rightShoulder?: CFrame;
-    readonly leftShoulder?: CFrame;
-    readonly rightHip?: CFrame;
-    readonly leftHip?: CFrame;
-    readonly weaponGrip?: CFrame;
-}
-```
-
-Reusable sword poses might include:
-
-- `SwordIdle`
-- `SwordBlock`
-- `SwordLight1Windup` and `SwordLight1Strike`
-- `SwordLight2Windup` and `SwordLight2Strike`
-- `SwordLight3Windup` and `SwordLight3Strike`
-- `SwordHeavyCharge` and `SwordHeavyStrike`
-- `SwordHitReactionLeft` and `SwordHitReactionRight`
-
-### Motion definition
-
-An attack composes poses into phases:
-
-```ts
-interface MotionPhase {
-    readonly poseId: string;
-    readonly duration: number;
-    readonly easing: "Linear" | "QuadIn" | "QuadOut" | "CubicInOut";
-}
-
-interface ProceduralMotion {
-    readonly phases: readonly MotionPhase[];
-}
-```
-
-The engine blends joint `Transform` offsets during `RunService.PreSimulation`. New
-Roblox experiences use `AnimationConstraint` as the default R15 avatar joint through
-the Avatar Joint Upgrade; older rigs may still use `Motor6D`. Both expose a
-`Transform` suitable for procedural animation, but `AnimationConstraint:IsA("Motor6D")`
-is false. Joint discovery must therefore support both classes rather than assuming
-the shoulder is an `UpperTorso.RightShoulder` Motor6D.
-
-The current compatibility adapter checks, in order:
-
-- `AnimationConstraint`
-- `Motor6D`
-- `Bone`
-- `Weld` or `ManualWeld`
-
-On the playtested upgraded R15 avatar, `RightShoulder` is an
-`AnimationConstraint` under `RightUpperArm`. The procedural controller locates it by
-semantic joint name and connected body part, then writes its `Transform` during
-`PreSimulation`. This ordering lets the Animator evaluate first and the procedural
-combat pose layer afterward. Do not change rig-attachment `CFrame` values to animate
-the character.
-
-The combat pose layers over normal locomotion so the avatar can retain movement while
-the upper body attacks. Strong attacks may temporarily influence the waist, hips, and
-movement speed to create weight.
-
-Procedural motion should include:
-
-- Eased interpolation rather than constant-speed rotation.
-- Small overshoot or spring settling on powerful strikes.
-- Different upper- and lower-body influence weights.
-- Smooth interruption into stagger or death.
-- A reduced-motion option for camera shake and screen effects, not joint readability.
-
-### Replication model
-
-The initiating client begins its presentation immediately and sends an action request.
-After validation, the server broadcasts an action ID, actor, authoritative start time,
-and any required variation seed. Every observing client plays the same deterministic
-motion locally at the correct time offset.
+The initiating client begins its animation immediately and sends an abstract action
+request. After validation, the server broadcasts an action ID, actor, authoritative
+start time, and combo step. Observing clients play the same authored asset at the
+correct time offset.
 
 The server does not depend on rendered limb or weapon positions for damage. It uses
 the weapon definition, authoritative character root transform, attack timing, and
@@ -481,8 +419,8 @@ Roblox RemoteEvent.
 
 - Render the equipped sword model.
 - Bind touch, mouse, and keyboard controls.
-- Predict local poses and UI feedback.
-- Render procedural animation for local and remote combatants.
+- Predict local authored animation and UI feedback.
+- Render AnimationTracks for local and remote combatants.
 - Display charge progress, combo availability, blocking state, hit effects, sound,
   trails, and optional camera feedback.
 - Send only abstract action requests.
@@ -516,8 +454,8 @@ src/
 │   │   ├── equipment-visual-controller.ts
 │   │   └── mobile-combat-controller.ts
 │   └── animation/
-│       ├── procedural-animator.ts
-│       └── rig-adapter.ts
+│       ├── combat-animation-controller.ts
+│       └── animation-registry.ts
 ├── server/
 │   └── services/
 │       ├── combat-service.ts
@@ -551,13 +489,13 @@ must not be edited by hand.
 - Create the weapon definition and starter inventory record.
 - Equip, unequip, respawn, and re-equip the visual sword without duplicates.
 
-### Phase 2: procedural motion prototype
+### Phase 2: authored motion pipeline
 
-- Create an R15 rig adapter and joint reset behavior.
-- Implement pose interpolation and motion phases.
-- Build sword idle, block, Light 1, and recovery poses.
-- Verify the animation on local and remote players.
-- Add Light 2, Light 3, and heavy charge/strike after the foundation feels stable.
+- Export the exact R15 character and sword into the Blender source workspace.
+- Build reusable hand/foot IK controls and author the four reference-driven attacks.
+- Render and review multi-angle playblasts before export.
+- Import and publish the FBX actions through Studio's Animation Editor.
+- Add typed animation IDs and local/remote AnimationTrack playback.
 
 ### Phase 3: authoritative combat
 
@@ -597,7 +535,7 @@ The first weapon slice is complete when:
 - Frontal blocking reduces valid damage; attacks from behind are not blocked.
 - The system remains usable on touch without relying on hover, right-click, or small
   targets.
-- Other clients see synchronized procedural combat motion.
+- Other clients see synchronized authored combat animation.
 - Invalid or spammed client requests cannot create extra damage or impossible states.
 - Death and respawn cleanly reset weapon visuals, controls, animation, and combat state.
 - No uploaded character animation asset is required for the complete starter moveset.
@@ -615,15 +553,14 @@ Before implementation, the only manual Studio work required for the first sword 
 7. Add `HitboxEnd` near the blade tip.
 8. Place it at `ReplicatedStorage/Assets/Weapons/HopliteSword`.
 
-Everything after those semantic markers—equipping, alignment, procedural poses,
+Everything after those semantic markers—equipping, alignment, authored animation,
 input, validation, hit detection, damage, and replication—belongs to the codebase.
 
 ## 18. Implemented first slice and lessons learned
 
-Procedural motion development now uses the development-only workflow documented in
-[`docs/animation-lab.md`](animation-lab.md). Future animation changes should be
-inspected there with deterministic poses and trajectory diagnostics before ordinary
-combat playtesting.
+The previous procedural-motion prototype and development-only Animation Lab were
+removed after evaluation. A replacement visual-motion approach should be designed and
+tested in Roblox before the accepted action broadcast is treated as visible combat.
 
 The following behavior has been confirmed in Roblox Studio:
 
@@ -632,47 +569,36 @@ The following behavior has been confirmed in Roblox Studio:
 - `PrimaryGrip` is aligned with the hand's `RightGripAttachment` using the custom
   `WeaponGrip` Motor6D.
 - The sword appears in the correct hand and follows the character.
-- Left mouse begins a locally predicted procedural light swing.
+- Left mouse begins a locally predicted light-combo input sequence.
 - Gamepad right trigger uses the same abstract attack action.
 - `ContextActionService` creates a dedicated mobile **Attack** button. Generic touch
   input is deliberately not bound, so ordinary screen and UI taps do not attack.
 - The server validates the request, equipped weapon, living Humanoid, and cooldown,
-  then broadcasts the accepted action for other clients to render.
-- The light swing has anticipation, diagonal strike, follow-through, and recovery
-  phases and returns the affected joints to neutral.
+  then broadcasts the accepted action. The current client validates acknowledgements
+  for prediction bookkeeping but does not render a swing.
 
-The light attack is now a server-sequenced four-hit combination:
+The light input is a server-sequenced four-step combination. The former visual
+motions were:
 
 1. A high-right windup followed by a downward right-to-left diagonal slash.
 2. A low-left recovery followed by an upward left-to-right diagonal slash.
-3. A forward stab with a procedural visual step and weight shift.
+3. A forward stab with a visual step and weight shift.
 4. A 360-degree spinning slash assembled from several sub-180-degree yaw keyframes,
    preventing `CFrame` interpolation from taking the short path backward.
 
-Every move poses the root, waist, neck, both shoulders and elbows, hips, and knees
-when those joints exist. Only the right shoulder is mandatory; missing secondary
-joints degrade gracefully for avatar compatibility. Poses run in `PreSimulation` so
-they layer after Roblox's Animator evaluation, and all transforms reset after the
-move. The client predicts immediately for responsive input while the server owns the
-combo step and broadcasts the accepted result. Combo state resets after 1.1 seconds,
-on character respawn, and stale unacknowledged client predictions expire.
-
-The optimized pose rig also drives both wrists and ankles. Wrist control is required
-to place the blade in the thrust and spinning-cut planes instead of merely moving a
-vertical sword with the shoulder. Every attack defines a smaller active strike window
-inside its full anticipation/recovery duration; trajectory diagnostics and future hit
-detection should evaluate that window rather than treating recovery as damage motion.
+The old joint-driving implementation is not part of the current runtime. The client
+still predicts combo timing immediately while the server owns the accepted combo
+step. Combo state resets after 1.1 seconds, on character respawn, and when stale
+unacknowledged predictions expire.
 
 The current slice still does **not** deal damage and does not yet implement charged
 heavy attacks or blocking. Those remain the next combat milestones.
 
 ### Avatar Joint Upgrade compatibility
 
-Future agents must not assume R15 body joints are Motor6Ds. The initial procedural
-animation failed silently because the runtime avatar used `AnimationConstraint` for
-`RightShoulder`; the only Motor6D found was the custom sword `WeaponGrip`. The fix was
-to discover avatar joints semantically, accept `AnimationConstraint`, and apply poses
-during `PreSimulation`.
+Any replacement animation implementation must not assume R15 body joints are
+Motor6Ds. Playtesting showed upgraded avatars can use `AnimationConstraint` for
+`RightShoulder`; semantic joint discovery must account for both representations.
 
 Roblox reference:
 [AnimationConstraint](https://create.roblox.com/docs/reference/engine/classes/AnimationConstraint).
@@ -693,13 +619,3 @@ rojo serve default.project.json --port 34872
 Connect the Studio Rojo plugin to `localhost:34872`, stop the current play session,
 allow Rojo to synchronize, and then start Play again. If new log statements do not
 appear at all, check synchronization before debugging gameplay logic.
-
-### Useful diagnostic prefixes
-
-- `[WeaponServer]`: server runtime, equip, request validation, and broadcast.
-- `[WeaponClient]`: client startup, input binding, prediction, and server response.
-- `[WeaponAnimator]`: joint discovery and procedural pose playback.
-
-Use Studio's **Output** panel with **All Messages** and **All Contexts** selected. The
-debug logging is intentionally verbose while this first combat slice is under active
-development and can be reduced after the remaining actions stabilize.

@@ -52,9 +52,9 @@ Processed source IDs are persisted per objective, progress is capped, and a
 stage-completing event never spills into the next stage. The client receives
 display-only quest snapshots and renders current stages in a compact tracker plus a
 selectable active/completed quest log in `QuestHud`. The initial
-sacred olive branch props were removed from `default.project.json` while the shared
-place serves as an unobstructed Animation Lab; world collectibles can be authored
-again when level design resumes.
+sacred olive branch props were removed during early combat prototyping. The Animation
+Lab has since been removed; world collectibles can be authored again when level design
+resumes.
 
 Future inventory grants, enemy drops, NPC conversations, and combat events should
 normalize into the same authoritative engine boundary. They must not bypass

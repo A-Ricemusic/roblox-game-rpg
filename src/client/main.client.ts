@@ -5,7 +5,6 @@ import { QuestHud } from "./quests/QuestHud";
 import { InventoryClientController } from "./inventory/InventoryClientController";
 import { InventoryHud } from "./inventory/InventoryHud";
 import { WeaponClientController } from "./weapons/WeaponClientController";
-import { AnimationLabController } from "./animation-lab/AnimationLabController";
 import { PlayerResourceController } from "./resources/PlayerResourceController";
 import { PlayerResourceHud } from "./resources/PlayerResourceHud";
 
@@ -27,6 +26,3 @@ resourceController.start();
 
 const weaponController = new WeaponClientController(() => !inventoryHud.isOpen() && !questHud.isJournalOpen());
 weaponController.start();
-
-const animationLab = new AnimationLabController();
-animationLab.start();
