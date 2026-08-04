@@ -21,6 +21,7 @@
 
 # Temporary Animation Lab screenshots and frame captures
 /artifacts/animation-lab/
+/artifacts/animation-reference/
 
 .env.local
 /.convex/
