@@ -18,6 +18,11 @@ def main():
         "Greek_Bronze_Brazier": (10, 4, 0),
         "Greek_Olive_Tree": (5, -6, 0),
         "Greek_Fountain_Basin": (-6, -7, 0),
+        "Greek_Temple_Roof": (0, 23, 0),
+        "Greek_Amphora": (13, -5, 0),
+        "Greek_Ruined_Column": (-13, -8, 0),
+        "Greek_Cliff_Module": (18, 14, 0),
+        "Greek_Athena_Statue": (-19, 13, 0),
     }
     for collection_name, position in positions.items():
         for obj in bpy.data.collections[collection_name].objects:
@@ -36,7 +41,7 @@ def main():
     floor = bpy.context.object
     floor.data.materials.append(bpy.data.materials["Aged Pentelic Marble"])
 
-    bpy.ops.object.camera_add(location=(31, -40, 28))
+    bpy.ops.object.camera_add(location=(48, -58, 38))
     camera = bpy.context.object
     direction = (mathutils.Vector((0, 0, 5.0)) - camera.location).to_track_quat("-Z", "Y")
     camera.rotation_euler = direction.to_euler()
@@ -45,8 +50,8 @@ def main():
 
     scene = bpy.context.scene
     scene.render.engine = "BLENDER_EEVEE"
-    scene.render.resolution_x = 1400
-    scene.render.resolution_y = 900
+    scene.render.resolution_x = 1600
+    scene.render.resolution_y = 1000
     scene.render.resolution_percentage = 100
     scene.render.image_settings.file_format = "PNG"
     scene.render.filepath = str(OUTPUT)

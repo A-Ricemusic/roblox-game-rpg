@@ -1,0 +1,72 @@
+{
+	"creatorId": "3407487520",
+	"creatorType": "userId",
+	"assets": {
+		"Greek_Bronze_Brazier": {
+			"assetId": "130391073060832",
+			"contentHash": "d933eb84362c98b2cc812ba17b671809a67fed713eaee23c0d683e4d10cedf20",
+			"displayName": "Greek Bronze Brazier",
+			"source": "exports/Greek_Bronze_Brazier.fbx"
+		},
+		"Greek_Doric_Column_Short": {
+			"assetId": "124728617484658",
+			"contentHash": "5f01ff7c446fcd0091f3606b25dee7df781236204b847c5639f707f64974859a",
+			"displayName": "Greek Doric Column Short",
+			"source": "exports/Greek_Doric_Column_Short.fbx"
+		},
+		"Greek_Doric_Column_Tall": {
+			"assetId": "120851115252091",
+			"contentHash": "7d4f692119cf51213d5baf4a80a69ea87fffd75df38624c7792e389871f58b7d",
+			"displayName": "Greek Doric Column Tall",
+			"source": "exports/Greek_Doric_Column_Tall.fbx"
+		},
+		"Greek_Fountain_Basin": {
+			"assetId": "106096702792627",
+			"contentHash": "a1b3b93b425168069be07be87006ce2377ef4873b4839592390c8140f2870c43",
+			"displayName": "Greek Fountain Basin",
+			"source": "exports/Greek_Fountain_Basin.fbx"
+		},
+		"Greek_Gateway_Entablature": {
+			"assetId": "117437916072886",
+			"contentHash": "faee0ebd4d5894c316ba547bcd87ae6e603c461771e523b1b729e615e37ff462",
+			"displayName": "Greek Gateway Entablature",
+			"source": "exports/Greek_Gateway_Entablature.fbx"
+		},
+		"Greek_Olive_Tree": {
+			"assetId": "123192115101995",
+			"contentHash": "176744b2be8d896032e7fb6b6739c277f90da0f99ac84187d0081b26373f300e",
+			"displayName": "Greek Olive Tree",
+			"source": "exports/Greek_Olive_Tree.fbx"
+		},
+		"Greek_Amphora": {
+			"assetId": "81643755502063",
+			"contentHash": "81c43e0f81fe3503dec2ba366745d4d76988e38a814e709744ff8aea83625aa7",
+			"displayName": "Greek Amphora",
+			"source": "exports/Greek_Amphora.fbx"
+		},
+		"Greek_Athena_Statue": {
+			"assetId": "74663425390099",
+			"contentHash": "82c696d5344c629226c1c72cb9ca6e39d4dce603192b17971d2879f65f0b1280",
+			"displayName": "Greek Athena Statue",
+			"source": "exports/Greek_Athena_Statue.fbx"
+		},
+		"Greek_Cliff_Module": {
+			"assetId": "140093666746282",
+			"contentHash": "6c51a20c195f323108bfe4f503ca5175d6dd7c880690afadffdb411b5e48f379",
+			"displayName": "Greek Cliff Module",
+			"source": "exports/Greek_Cliff_Module.fbx"
+		},
+		"Greek_Ruined_Column": {
+			"assetId": "124539608775496",
+			"contentHash": "2ac038c0b709539056dc57cefc9827d2a746d1741893d5f9d6d5d09a5153d569",
+			"displayName": "Greek Ruined Column",
+			"source": "exports/Greek_Ruined_Column.fbx"
+		},
+		"Greek_Temple_Roof": {
+			"assetId": "106058523207579",
+			"contentHash": "f8f6f30911ca30d4fed2d095aedc4e70d704370f550e418ec7616c39c7be66c4",
+			"displayName": "Greek Temple Roof",
+			"source": "exports/Greek_Temple_Roof.fbx"
+		}
+	}
+}

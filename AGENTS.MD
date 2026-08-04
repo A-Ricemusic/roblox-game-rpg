@@ -14,4 +14,4 @@ Before changing player persistence, profiles, or database configuration, read `d
 
 Before changing inventory, items, or world pickups, read `docs/inventory-system.md`. Inventory must remain independent of weapon and combat behavior until an explicit integration is designed.
 
-Before creating, uploading, importing, or replacing Blender/Roblox assets, read `docs/blender-roblox-pipeline.md`. Keep credentials local, validate packages in `Workspace.GreekAssetStaging`, and make every durable world change through the Rojo-managed source.
+Before creating, uploading, importing, or replacing Blender/Roblox assets, read `docs/blender-roblox-pipeline.md`. Keep credentials local, validate packages in `ServerStorage.GreekAssetStaging`, and never mount or promote imported world geometry until numeric bounds and placement checks pass.

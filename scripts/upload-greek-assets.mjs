@@ -64,7 +64,11 @@ async function upload(fileName, fileBytes, contentHash) {
 	return { assetId: String(assetId), contentHash, displayName, source: `exports/${fileName}` };
 }
 
-const files = (await readdir(exportRoot)).filter((fileName) => fileName.endsWith(".fbx")).sort();
+const requestedKeys = new Set(process.argv.slice(2));
+const files = (await readdir(exportRoot))
+	.filter((fileName) => fileName.endsWith(".fbx"))
+	.filter((fileName) => requestedKeys.size === 0 || requestedKeys.has(basename(fileName, ".fbx")))
+	.sort();
 if (files.length === 0) throw new Error("No FBX exports were found. Generate the Blender kit first.");
 let manifest;
 try {

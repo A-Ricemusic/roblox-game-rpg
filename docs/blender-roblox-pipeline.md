@@ -22,6 +22,41 @@ The Rojo world source remains authoritative for placement and gameplay behavior;
 objects inserted directly into Studio are staging copies until their MeshPart IDs
 and placement are represented in source.
 
+## Mandatory Blender visual-quality gate
+
+Blender is the required environment for visual review and approval of every
+animation and authored 3D asset. Roblox Studio is used only for importing the
+approved export and confirming technical compatibility. Do not use Studio as the
+first or primary place to discover malformed motion, self-intersections, poor
+silhouettes, bad timing, weak posing, incorrect pivots, broken proportions, or
+low-quality modeling.
+
+Before any animation is uploaded or imported, agents must:
+
+- render the complete motion in Blender, not only a single contact pose;
+- compare it against every supplied reference image or video;
+- inspect the motion from front, side, and three-quarter views;
+- inspect anticipation, contact, follow-through, recovery, foot planting, balance,
+  hand placement, weapon orientation, and the complete weapon-tip path;
+- verify that the weapon never intersects, impales, or passes through its wielder;
+- review the full combo at the exact intended gameplay cadence; and
+- iterate in Blender until the motion is visually convincing and production-ready.
+
+For static assets, agents must likewise render and inspect the final asset in
+Blender from multiple useful angles at representative lighting and scale. Check
+silhouette, proportions, materials, texture quality, normals, pivots, and visible
+intersections before upload.
+
+Contact sheets and review videos must be written beneath `artifacts/` and actually
+inspected before approval. Merely confirming that an FBX exports, uploads, or
+returns an `AnimationTrack` is not visual validation. A technically valid asset can
+still be unusable. If the Blender review is not satisfactory, do not publish it.
+
+After this gate passes, Studio validation is deliberately narrow: confirm that the
+approved file imports, maps to the expected Roblox rig or asset type, retains its
+orientation and scale, and can be loaded. Do not redesign or judge the original
+artistic quality in the shared Studio instance; other developers may be using it.
+
 ## End-to-end flow
 
 ```text
@@ -29,7 +64,7 @@ Blender Python generator
         ↓
 Editable .blend + individual FBX exports
         ↓
-Local geometry and preview validation
+Mandatory Blender multi-angle quality review
         ↓
 Roblox Open Cloud Assets API
         ↓
@@ -109,10 +144,17 @@ created; update source references only after validating that package.
 
 First list connected Studio instances and explicitly confirm or select the active
 `greek rpg game` instance. Confirm it is in Edit mode. Create or reuse exactly one
-Folder named `Workspace.GreekAssetStaging` with a safe edit-time Luau command.
+Folder named `ServerStorage.GreekAssetStaging` with a safe edit-time Luau command.
 Then use Studio MCP's `insert_asset` operation with `assetType: Model`, the
-manifest's package ID, and `parentPath: Workspace.GreekAssetStaging`. Insert one
+manifest's package ID, and `parentPath: ServerStorage.GreekAssetStaging`. Insert one
 copy of every changed asset before editing the live world.
+
+Never stage an unvalidated import in Workspace. ServerStorage prevents an
+oversized or misplaced package from rendering, colliding with players, changing
+camera behavior, or disrupting another developer's play-test. After validation,
+promote only one approved asset at a time into a dedicated Workspace preview
+location, with all descendant BaseParts anchored and collision, touch, and query
+disabled. Remove that preview before validating the next asset.
 
 For every inserted package, inspect:
 
@@ -122,6 +164,36 @@ For every inserted package, inspect:
 - inverted normals or missing faces;
 - imported materials and colors; and
 - anchoring, collision, touch, and query properties.
+
+### Mandatory scale and placement gate
+
+An imported asset must match the scale of the existing Roblox scene before it is
+placed or replicated. Do not assume that Blender units, the package preview, or
+an FBX's stored transform survived import correctly. Measure the inserted Model
+with `GetBoundingBox()` and compare it numerically with the specific blockout part
+or neighboring asset it replaces. For example, a temple roof intended for the
+current 42 × 34 stud temple floor should be approximately 45 × 38 studs—not
+hundreds of studs across.
+
+Also inspect the Model pivot, each child `MeshPart.Size`, and each child CFrame
+relative to the Model pivot. Insert and validate exactly one staging copy before
+cloning or referencing it throughout the world. If any dimension, position, or
+pivot is unexpected, stop and correct the Blender export or source transform;
+never compensate by eyeballing a large mesh in the live map.
+
+Before promotion, enforce a conservative hard bound appropriate to the target.
+Reject an asset if any dimension exceeds both its documented replacement size and
+the expected overhang tolerance. For example, a temple roof may be approximately
+45 × 38 studs for a 42 × 34 stud temple, but it must be rejected if it imports at
+450 × 380. Validation must compare numbers, not visual appearance or camera
+framing.
+
+When MeshParts are created through Rojo, use an explicit `CFrame` for placement.
+Assigning only `Position`/`Orientation` can be lost when Roblox applies `MeshId`,
+causing imported geometry to stack at the world origin. After every sync, query
+the live MeshPart and assert its actual `Size`, `Position`, and bounding box
+against the intended blockout dimensions before taking screenshots or entering
+Play mode.
 
 FBX material colors can arrive in Roblox as gray Plastic. Treat Blender materials
 as authoring and preview metadata unless a tested SurfaceAppearance/PBR pipeline
@@ -159,6 +231,11 @@ tagged pickup roots rather than replacements for those roots.
 
 Direct Studio edits are not durable. The integration is complete only when a
 fresh Rojo build reproduces the redesigned environment.
+
+The default Rojo project intentionally does not mount `GreekWorld` while the art
+pass is under isolated review. Do not restore that mapping until every referenced
+mesh has passed ServerStorage bounds validation and a one-at-a-time Workspace
+preview. Re-enabling the mapping is a separate reviewed change.
 
 ## 6. Verify and commit
 

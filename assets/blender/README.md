@@ -35,6 +35,13 @@ models become packages owned by the configured creator; creation is an external
 side effect and is not transactionally reversible. Moderation or processing can
 temporarily delay Studio insertion.
 
+To upload only explicitly changed or newly added assets, pass their collection
+names after `--`, for example:
+
+```sh
+npm run world:assets:upload -- Greek_Amphora Greek_Temple_Roof
+```
+
 Restrict the local secret file with `chmod 600 .env.local`, or inject the key
 ephemerally from a system keychain. Never paste it into chat, Studio attributes,
 source files, or command-line arguments.

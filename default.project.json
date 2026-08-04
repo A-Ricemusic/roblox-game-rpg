@@ -64,9 +64,6 @@
 					"Size": [512, 20, 512]
 				}
 			},
-			"GreekWorld": {
-				"$path": "src/world/world.project.json"
-			},
 			"BetaInventoryPickups": {
 				"$className": "Folder",
 				"OliveBranch01": {
