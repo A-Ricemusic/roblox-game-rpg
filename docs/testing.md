@@ -60,17 +60,23 @@ export JEST_ROBLOX_STUDIO_PATH=/Applications/RobloxStudio.app/Contents/MacOS/Rob
 
 Coverage requires `lute` on `PATH`. `rokit install` provides the pinned binary; ensure the Rokit bin directory is on `PATH`.
 
-## Open Cloud and CI
+## Open Cloud backend
 
-CI uses a dedicated, non-production Roblox experience and these repository secrets:
+Terminal tests can use a dedicated, non-production Roblox experience with these
+environment variables:
 
 - `ROBLOX_OPEN_CLOUD_API_KEY`
 - `ROBLOX_UNIVERSE_ID`
 - `ROBLOX_PLACE_ID`
 
-The API key must have only the permissions needed to upload and execute the dedicated test place. Never point the workflow at a production universe. `.github/workflows/ci.yml` fails when credentials are missing and runs `npm run test:coverage`; thresholds in `jest.config.mjs` therefore act as a merge gate.
+The API key must have only the permissions needed to upload and execute the dedicated
+test place. Never point local test tooling at a production universe. The repository
+does not run an automated CI/CD workflow; developers must run the quality gates
+locally before committing or releasing.
 
-Current global thresholds are 80% branches and 85% functions, lines, and statements. Adapters that require real external services are excluded from unit coverage only when they have an isolated staging suite.
+`npm run test:coverage` enforces global thresholds of 80% branches and 85% functions,
+lines, and statements. Adapters that require real external services are excluded
+from unit coverage only when they have an isolated staging suite.
 
 ## Test-place separation
 

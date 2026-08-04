@@ -185,8 +185,9 @@ npm run convex:deploy
 Convex backend tests use the official `convex-test` transaction simulator with
 Vitest because these files execute in Convex's TypeScript runtime, not Roblox.
 Roblox adapters and gameplay behavior remain in `@rbxts/jest` and execute in Roblox.
-CI enforces at least 80% Convex line, branch, function, and statement coverage in
-addition to the existing Roblox coverage thresholds.
+`npm run test:convex:coverage` enforces at least 80% Convex line, branch, function,
+and statement coverage in addition to the Roblox coverage thresholds enforced by
+`npm run test:coverage`.
 
 Deployments must pass `npx convex dev --once --typecheck enable`, strict `rbxtsc`,
 both test suites, formatting, and the Rojo production-place build. After deploying,

@@ -34,7 +34,7 @@ npm test
 npm run test:coverage
 ```
 
-Runtime tests execute inside Roblox. See the [testing architecture and local/CI setup](docs/testing.md) before the first runtime test.
+Runtime tests execute inside Roblox. See the [testing architecture and local setup](docs/testing.md) before the first runtime test.
 
 ## Design documents
 
