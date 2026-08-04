@@ -1,6 +1,6 @@
-import { CollectionService } from "@rbxts/services";
+import { CollectionService, InsertService } from "@rbxts/services";
 
-import { BANDIT_DEFAULTS, BANDIT_TAG } from "./BanditConstants";
+import { BANDIT_DEFAULTS, BANDIT_TAG, BanditArchetype, REALISTIC_PIRATE_MODEL_IDS } from "./BanditConstants";
 
 const SKIN = Color3.fromRGB(151, 98, 66);
 const LINEN = Color3.fromRGB(220, 207, 174);
@@ -232,4 +232,51 @@ export function createBandit(spawnCFrame: CFrame): Model {
 	model.SetAttribute("WalkSpeed", BANDIT_DEFAULTS.walkSpeed);
 	CollectionService.AddTag(model, BANDIT_TAG);
 	return model;
+}
+
+export function createRealisticPirate(archetype: BanditArchetype, spawnCFrame: CFrame): Model {
+	const container = InsertService.LoadAsset(REALISTIC_PIRATE_MODEL_IDS[archetype]);
+	const imported = container.FindFirstChildWhichIsA("Model");
+	if (imported === undefined) {
+		container.Destroy();
+		error(`Realistic ${archetype} pirate asset did not contain a Model.`);
+	}
+	imported.Parent = undefined;
+	container.Destroy();
+	imported.Name = archetype === "Melee" ? "SicilianCorsair" : "SicilianMarksman";
+	imported.ScaleTo(2.4);
+	const root = imported.FindFirstChild("RootPart");
+	if (!root?.IsA("BasePart")) error(`${imported.Name} is missing its imported RootPart.`);
+	root.Name = "HumanoidRootPart";
+	root.Size = new Vector3(2, 2, 1);
+	root.Transparency = 1;
+	root.CanCollide = true;
+	root.Massless = false;
+	for (const descendant of imported.GetDescendants()) {
+		if (!descendant.IsA("BasePart") || descendant === root) continue;
+		descendant.CanCollide = false;
+		descendant.CanQuery = false;
+		descendant.Massless = true;
+	}
+	imported.FindFirstChildOfClass("AnimationController")?.Destroy();
+	const humanoid = new Instance("Humanoid");
+	humanoid.DisplayName = archetype === "Melee" ? "Sicilian Corsair" : "Sicilian Marksman";
+	humanoid.MaxHealth = archetype === "Melee" ? 140 : 90;
+	humanoid.Health = humanoid.MaxHealth;
+	humanoid.WalkSpeed = archetype === "Melee" ? 14 : 12;
+	humanoid.Parent = imported;
+	const animator = new Instance("Animator");
+	animator.Parent = humanoid;
+	imported.PrimaryPart = root;
+	imported.SetAttribute("RealisticPirate", true);
+	imported.SetAttribute("BanditArchetype", archetype);
+	imported.SetAttribute("DetectionRadius", archetype === "Melee" ? 70 : 90);
+	imported.SetAttribute("AttackRange", archetype === "Melee" ? 5.5 : 55);
+	imported.SetAttribute("PreferredRange", archetype === "Melee" ? 0 : 28);
+	imported.SetAttribute("Damage", archetype === "Melee" ? 22 : 14);
+	imported.SetAttribute("AttackCooldown", archetype === "Melee" ? 1.3 : 2.2);
+	imported.SetAttribute("WalkSpeed", humanoid.WalkSpeed);
+	CollectionService.AddTag(imported, BANDIT_TAG);
+	imported.PivotTo(spawnCFrame);
+	return imported;
 }

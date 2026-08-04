@@ -6,6 +6,20 @@ export const BANDIT_ANIMATION_IDS = {
 	attack: "rbxassetid://72279573649472",
 } as const;
 
+export const REALISTIC_PIRATE_ANIMATION_IDS = {
+	idle: "rbxassetid://92569884439333",
+	run: "rbxassetid://110836622332807",
+	meleeAttack: "rbxassetid://87309384259120",
+	rangedAttack: "rbxassetid://134678032396641",
+} as const;
+
+export const REALISTIC_PIRATE_MODEL_IDS = {
+	Melee: 137881373266052,
+	Ranged: 79833765825007,
+} as const;
+
+export type BanditArchetype = keyof typeof REALISTIC_PIRATE_MODEL_IDS;
+
 export const BANDIT_DEFAULTS = {
 	detectionRadius: 70,
 	attackRange: 5.5,

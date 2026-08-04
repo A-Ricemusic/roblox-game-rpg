@@ -23,7 +23,7 @@ import { getOrCreateQuestRemote, QuestRemoteService } from "./quests/QuestRemote
 import { WeaponRuntime } from "./weapons/WeaponRuntime";
 import { BanditEnemySystem } from "./enemies/BanditEnemySystem";
 import { BANDIT_TAG } from "./enemies/BanditConstants";
-import { createBandit } from "./enemies/BanditFactory";
+import { createRealisticPirate } from "./enemies/BanditFactory";
 
 const AUTOSAVE_INTERVAL_SECONDS = 60;
 const SHUTDOWN_LOAD_DRAIN_SECONDS = 10;
@@ -79,8 +79,13 @@ const inventoryRemoteConnection = inventoryRemotes.start(profileKey);
 weapons.start();
 bandits.start();
 if (game.Workspace.GetAttribute("DisableDemoBandit") !== true && CollectionService.GetTagged(BANDIT_TAG).size() === 0) {
-	const demoBandit = createBandit(new CFrame(0, 5, 24));
-	demoBandit.Parent = game.Workspace;
+	for (const [archetype, cframe] of [
+		["Melee", new CFrame(-8, 5, 24)],
+		["Ranged", new CFrame(8, 5, 32)],
+	] as const) {
+		const pirate = createRealisticPirate(archetype, cframe);
+		pirate.Parent = game.Workspace;
+	}
 }
 
 function loadPlayer(player: Player): void {

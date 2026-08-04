@@ -1,4 +1,4 @@
-import { BANDIT_ANIMATION_IDS } from "./BanditConstants";
+import { BANDIT_ANIMATION_IDS, REALISTIC_PIRATE_ANIMATION_IDS } from "./BanditConstants";
 
 type LocomotionState = "idle" | "run";
 
@@ -32,9 +32,26 @@ export class BanditAnimator {
 			animator = new Instance("Animator");
 			animator.Parent = humanoid;
 		}
-		this.idle = loadTrack(animator, BANDIT_ANIMATION_IDS.idle, Enum.AnimationPriority.Idle, true);
-		this.run = loadTrack(animator, BANDIT_ANIMATION_IDS.run, Enum.AnimationPriority.Movement, true);
-		this.attack = loadTrack(animator, BANDIT_ANIMATION_IDS.attack, Enum.AnimationPriority.Action, false);
+		const realistic = model.GetAttribute("RealisticPirate") === true;
+		const archetype = model.GetAttribute("BanditArchetype");
+		this.idle = loadTrack(
+			animator,
+			realistic ? REALISTIC_PIRATE_ANIMATION_IDS.idle : BANDIT_ANIMATION_IDS.idle,
+			Enum.AnimationPriority.Idle,
+			true,
+		);
+		this.run = loadTrack(
+			animator,
+			realistic ? REALISTIC_PIRATE_ANIMATION_IDS.run : BANDIT_ANIMATION_IDS.run,
+			Enum.AnimationPriority.Movement,
+			true,
+		);
+		const attackId = realistic
+			? archetype === "Ranged"
+				? REALISTIC_PIRATE_ANIMATION_IDS.rangedAttack
+				: REALISTIC_PIRATE_ANIMATION_IDS.meleeAttack
+			: BANDIT_ANIMATION_IDS.attack;
+		this.attack = loadTrack(animator, attackId, Enum.AnimationPriority.Action, false);
 		this.idle.Play(0.15);
 	}
 
