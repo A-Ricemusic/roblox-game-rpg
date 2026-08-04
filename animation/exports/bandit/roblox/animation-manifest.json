@@ -16,6 +16,26 @@
 			"assetId": "72279573649472",
 			"contentHash": "838ef42fce384390544d5bbd430c4ecd2431832b64435ecbee3847112fe0ce88",
 			"source": "roblox/BanditAttack.rbxmx"
+		},
+		"RealisticPirateIdle": {
+			"assetId": "92569884439333",
+			"contentHash": "03b3044c91c6339e93541e91deb849499e447d7abf59e9bef48eb38688aa889e",
+			"source": "roblox/RealisticPirateIdle.rbxmx"
+		},
+		"RealisticPirateRun": {
+			"assetId": "110836622332807",
+			"contentHash": "9099aff4873d715e3876dc29aa52c8d60ca9cecf589b57bf3c066cb88e7fa18c",
+			"source": "roblox/RealisticPirateRun.rbxmx"
+		},
+		"RealisticPirateSwordAttack": {
+			"assetId": "87309384259120",
+			"contentHash": "9c2881f7a6f07b96965fadd51a42da7b2c7b1fa9773582613f48b3c17b513847",
+			"source": "roblox/RealisticPirateSwordAttack.rbxmx"
+		},
+		"RealisticPirateCrossbowFire": {
+			"assetId": "134678032396641",
+			"contentHash": "9561a5d6551276651aa49626dd23fe19fce19a00c8691cbcf86d5579206ec411",
+			"source": "roblox/RealisticPirateCrossbowFire.rbxmx"
 		}
 	}
 }

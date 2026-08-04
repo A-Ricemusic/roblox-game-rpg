@@ -28,6 +28,23 @@ const hierarchy = {
 		},
 	},
 };
+const gameEngineHierarchy = {
+	Root: {
+		pelvis: {
+			spine_01: {
+				spine_02: {
+					spine_03: {
+						clavicle_l: { upperarm_l: { lowerarm_l: { hand_l: {} } } },
+						clavicle_r: { upperarm_r: { lowerarm_r: { hand_r: {} } } },
+						neck_01: { head: {} },
+					},
+				},
+			},
+			thigh_l: { calf_l: { foot_l: {} } },
+			thigh_r: { calf_r: { foot_r: {} } },
+		},
+	},
+};
 
 const identity = [0, 0, 0];
 const wait = (milliseconds) => new Promise((resolvePromise) => setTimeout(resolvePromise, milliseconds));
@@ -69,7 +86,7 @@ function poseXml(name, children, rotations, indent) {
 function sequenceXml(clip) {
 	const keyframes = clip.frames
 		.map(({ time, rotations }, index) => {
-			const poses = Object.entries(hierarchy)
+			const poses = Object.entries(clip.hierarchy ?? hierarchy)
 				.map(([name, children]) => poseXml(name, children, rotations, "\t\t"))
 				.join("");
 			return `\t<Item class="Keyframe"><Properties><string name="Name">Keyframe${index + 1}</string><float name="Time">${time}</float></Properties>${poses}\t</Item>`;
@@ -138,6 +155,82 @@ const clips = [
 				},
 			},
 			{ time: 0.72, rotations: {} },
+		],
+	},
+	{
+		name: "RealisticPirateIdle",
+		loop: true,
+		priority: 0,
+		hierarchy: gameEngineHierarchy,
+		frames: [0, 1, 2].map((time) => ({
+			time,
+			rotations: {
+				spine_02: [Math.sin(time * Math.PI) * 0.035, 0, 0],
+				upperarm_l: [0.06, 0, -0.08],
+				upperarm_r: [0.06, 0, 0.08],
+			},
+		})),
+	},
+	{
+		name: "RealisticPirateRun",
+		loop: true,
+		priority: 1,
+		hierarchy: gameEngineHierarchy,
+		frames: [0, 0.25, 0.5, 0.75, 1].map((time) => {
+			const stride = Math.sin(time * Math.PI * 2);
+			return {
+				time,
+				rotations: {
+					spine_02: [0.09, 0, 0],
+					thigh_l: [-stride * 0.65, 0, 0],
+					thigh_r: [stride * 0.65, 0, 0],
+					calf_l: [Math.max(0, stride) * 0.5, 0, 0],
+					calf_r: [Math.max(0, -stride) * 0.5, 0, 0],
+					upperarm_l: [stride * 0.55, 0, 0],
+					upperarm_r: [-stride * 0.55, 0, 0],
+				},
+			};
+		}),
+	},
+	{
+		name: "RealisticPirateSwordAttack",
+		loop: false,
+		priority: 2,
+		hierarchy: gameEngineHierarchy,
+		frames: [
+			{ time: 0, rotations: {} },
+			{
+				time: 0.24,
+				rotations: { spine_02: [0.05, 0.45, 0], upperarm_r: [-1.3, 0.25, 0.45], lowerarm_r: [-0.5, 0, 0] },
+			},
+			{
+				time: 0.46,
+				rotations: { spine_02: [0.12, -0.5, 0], upperarm_r: [0.75, 0.1, 0.15], lowerarm_r: [-0.1, 0, 0] },
+			},
+			{ time: 0.8, rotations: {} },
+		],
+	},
+	{
+		name: "RealisticPirateCrossbowFire",
+		loop: false,
+		priority: 2,
+		hierarchy: gameEngineHierarchy,
+		frames: [
+			{ time: 0, rotations: {} },
+			{
+				time: 0.25,
+				rotations: {
+					upperarm_l: [-0.9, -0.15, -0.35],
+					lowerarm_l: [-1.05, 0, 0],
+					upperarm_r: [-0.85, 0.2, 0.3],
+					lowerarm_r: [-1, 0, 0],
+				},
+			},
+			{
+				time: 0.45,
+				rotations: { spine_02: [-0.05, 0, 0], upperarm_l: [-0.95, -0.15, -0.35], upperarm_r: [-0.9, 0.2, 0.3] },
+			},
+			{ time: 0.9, rotations: {} },
 		],
 	},
 ];

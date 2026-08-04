@@ -1,0 +1,16 @@
+{
+	"creatorId": "3407487520",
+	"creatorType": "userId",
+	"assets": {
+		"SicilianCorsair": {
+			"assetId": "137881373266052",
+			"contentHash": "6ce690b16498062918e9cb065550a4b41173481bd9b5c63824cae2ba18515acb",
+			"source": "SicilianCorsair.fbx"
+		},
+		"SicilianMarksman": {
+			"assetId": "79833765825007",
+			"contentHash": "b363a4654249058b4eddd122f7bc9d7b9d1aacea4b634ff1f7fb35056a913a7a",
+			"source": "SicilianMarksman.fbx"
+		}
+	}
+}
