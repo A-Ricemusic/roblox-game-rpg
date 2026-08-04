@@ -9,6 +9,7 @@ BLEND_PATH = os.path.join(ROOT, "animation", "blender", "HopliteR15.blend")
 EXPORT_ROOT = os.path.join(ROOT, "animation", "exports")
 ROBLOX_EXPORT_ROOT = os.path.join(EXPORT_ROOT, "hoplite", "roblox")
 RENDER_ROOT = os.path.join(ROOT, "artifacts", "blender-renders")
+ANIMATION_REVIEW_ROOT = os.path.join(RENDER_ROOT, "hoplite-review")
 
 def rad(v):
     return math.radians(v)
@@ -161,10 +162,11 @@ def action(rig, controls, name, keys, end):
             control.animation_data_clear()
     neutral_controls = {
         "RightHandTarget": (-0.75, 0, 1.0), "LeftHandTarget": (0.75, 0, 1.0),
-        "RightFootTarget": (-0.35, -0.45, -1.0), "LeftFootTarget": (0.35, -0.45, -1.0),
+        "RightFootTarget": (-0.50, -0.72, -1.0), "LeftFootTarget": (0.50, -0.12, -1.0),
     }
     for frame, pose, targets in keys:
-        set_pose(rig, frame, pose)
+        pose_with_stance = {"HumanoidRootPart": {"l": (0, 0, -0.20)}, **pose}
+        set_pose(rig, frame, pose_with_stance)
         for control_name, neutral_location in neutral_controls.items():
             controls[control_name].location = targets.get(control_name, neutral_location)
             controls[control_name].keyframe_insert("location", frame=frame)
@@ -185,34 +187,64 @@ def action(rig, controls, name, keys, end):
 
 def create_actions(rig, controls):
     neutral = {}
-    # Forward is -Y. Arm local X rotation brings a hanging limb forward/back.
-    # World-space controls make the silhouette intentional. Forward is -Y.
+    # Forward is -Y. Both hands stay in front of the torso and travel together
+    # like the two-handed reference combo. The right hand owns the sword; the
+    # left hand supports the grip without crossing the blade's continuation.
+    guard = {
+        "RightHandTarget": (-0.45, -0.72, 2.35),
+        "LeftHandTarget": (0.02, -0.62, 2.42),
+    }
     action(rig, controls, "SwordAttack01_DownwardDiagonal", [
-        (1, neutral, {}),
-        (6, {"UpperTorso":{"r":(0,0,-18)}}, {"RightHandTarget":(-1.0,-.45,4.3), "LeftHandTarget":(-.35,-.35,3.55)}),
-        (11,{"HumanoidRootPart":{"l":(0,-.25,-.05)}, "UpperTorso":{"r":(8,0,22)}}, {"RightHandTarget":(.75,-1.35,1.45), "LeftHandTarget":(.15,-.8,2.4), "RightFootTarget":(-.35,-1.15,-1.0)}),
-        (17,{"UpperTorso":{"r":(4,0,12)}}, {"RightHandTarget":(.9,-.8,1.15), "LeftHandTarget":(.25,-.45,2.1), "RightFootTarget":(-.35,-.95,-1.0)}),
-        (24,neutral,{})], 24)
+        (1, {"UpperTorso":{"r":(4,0,4)}}, guard),
+        (3, {"LowerTorso":{"r":(-4,0,-8)}, "UpperTorso":{"r":(3,0,-18)}}, {
+            "RightHandTarget":(-1.28,-.72,2.58), "LeftHandTarget":(-.82,-.65,2.55)}),
+        (6, {"HumanoidRootPart":{"l":(0,-.12,-.24)}, "LowerTorso":{"r":(5,0,8)}, "UpperTorso":{"r":(-4,0,24)}}, {
+            "RightHandTarget":(1.08,-1.18,2.42), "LeftHandTarget":(.58,-1.02,2.48),
+            "RightFootTarget":(-.35,-.82,-1.0), "LeftFootTarget":(.35,-.25,-1.0)}),
+        (8, {"UpperTorso":{"r":(-2,0,18)}}, {
+            "RightHandTarget":(1.24,-.92,2.38), "LeftHandTarget":(.72,-.84,2.44),
+            "RightFootTarget":(-.35,-.75,-1.0)}),
+        (11, {"UpperTorso":{"r":(3,0,7)}}, guard)], 11)
     action(rig, controls, "SwordAttack02_RisingDiagonal", [
-        (1,neutral,{}),
-        (5,{"UpperTorso":{"r":(6,0,20)}},{"RightHandTarget":(.8,-.6,1.15), "LeftHandTarget":(.2,-.4,2.1)}),
-        (11,{"HumanoidRootPart":{"l":(0,-.22,-.04)}, "UpperTorso":{"r":(-8,0,-22)}},{"RightHandTarget":(-1.0,-1.0,4.0), "LeftHandTarget":(-.35,-.6,3.3), "RightFootTarget":(-.35,-1.05,-1.0)}),
-        (17,{"UpperTorso":{"r":(-4,0,-12)}},{"RightHandTarget":(-.9,-.55,4.25), "LeftHandTarget":(-.2,-.3,3.45), "RightFootTarget":(-.35,-.8,-1.0)}),
-        (24,neutral,{})],24)
+        (1, {"UpperTorso":{"r":(3,0,7)}}, guard),
+        (3, {"LowerTorso":{"r":(-3,0,8)}, "UpperTorso":{"r":(5,0,22)}}, {
+            "RightHandTarget":(1.12,-.88,1.82), "LeftHandTarget":(.63,-.82,1.98)}),
+        (6, {"HumanoidRootPart":{"l":(0,-.12,-.23)}, "LowerTorso":{"r":(4,0,-7)}, "UpperTorso":{"r":(-5,0,-25)}}, {
+            "RightHandTarget":(-1.20,-1.06,3.18), "LeftHandTarget":(-.72,-.96,3.03),
+            "LeftFootTarget":(.35,-.76,-1.0), "RightFootTarget":(-.35,-.28,-1.0)}),
+        (8, {"UpperTorso":{"r":(-3,0,-17)}}, {
+            "RightHandTarget":(-1.30,-.86,3.32), "LeftHandTarget":(-.78,-.78,3.15),
+            "LeftFootTarget":(.35,-.68,-1.0)}),
+        (11, {"UpperTorso":{"r":(3,0,-5)}}, guard)],11)
     action(rig, controls, "SwordAttack03_ForwardThrust", [
-        (1,neutral,{}),
-        (6,{"UpperTorso":{"r":(0,0,12)}},{"RightHandTarget":(-1.0,.2,2.55), "LeftHandTarget":(-.35,.05,2.45)}),
-        (11,{"HumanoidRootPart":{"l":(0,-.5,-.08)}, "UpperTorso":{"r":(-12,0,0)}},{"RightHandTarget":(-.15,-2.15,2.65), "LeftHandTarget":(-.25,-1.45,2.62), "RightFootTarget":(-.35,-1.4,-1.0)}),
-        (16,{"HumanoidRootPart":{"l":(0,-.42,-.05)}, "UpperTorso":{"r":(-8,0,0)}},{"RightHandTarget":(-.15,-1.9,2.65), "LeftHandTarget":(-.25,-1.25,2.62), "RightFootTarget":(-.35,-1.2,-1.0)}),
-        (24,neutral,{})],24)
+        (1, {"UpperTorso":{"r":(3,0,-5)}}, guard),
+        (3, {"LowerTorso":{"r":(-6,0,-5)}, "UpperTorso":{"r":(2,0,-18)}}, {
+            "RightHandTarget":(-.72,-.62,3.72), "LeftHandTarget":(-.28,-.58,3.55)}),
+        (5, {"LowerTorso":{"r":(-8,0,-2)}, "UpperTorso":{"r":(0,0,-10)}}, {
+            "RightHandTarget":(-.48,-.76,4.15), "LeftHandTarget":(-.05,-.70,3.90)}),
+        (8, {"HumanoidRootPart":{"l":(0,-.24,-.27)}, "LowerTorso":{"r":(8,0,5)}, "UpperTorso":{"r":(-8,0,20)}}, {
+            "RightHandTarget":(.72,-1.28,1.62), "LeftHandTarget":(.30,-1.10,1.90),
+            "RightFootTarget":(-.35,-1.02,-1.0), "LeftFootTarget":(.35,-.18,-1.0)}),
+        (10, {"UpperTorso":{"r":(-5,0,15)}}, {
+            "RightHandTarget":(.88,-1.04,1.52), "LeftHandTarget":(.42,-.94,1.83),
+            "RightFootTarget":(-.35,-.88,-1.0)}),
+        (12, {"UpperTorso":{"r":(3,0,6)}}, guard)],12)
     action(rig, controls, "SwordAttack04_Whirlwind", [
-        (1,neutral,{}),
-        (6,{"UpperTorso":{"r":(0,0,-10)}},{"RightHandTarget":(-.15,-1.75,2.55), "LeftHandTarget":(-.2,-1.25,2.55)}),
-        (12,{"HumanoidRootPart":{"r":(0,35,0)}},{"RightHandTarget":(-.15,-1.75,2.55), "LeftHandTarget":(-.2,-1.25,2.55)}),
-        (17,{"HumanoidRootPart":{"r":(0,145,0)}},{"RightHandTarget":(-.15,-1.75,2.55), "LeftHandTarget":(-.2,-1.25,2.55)}),
-        (21,{"HumanoidRootPart":{"r":(0,285,0)}},{"RightHandTarget":(-.15,-1.75,2.55), "LeftHandTarget":(-.2,-1.25,2.55)}),
-        (24,{"HumanoidRootPart":{"r":(0,360,0)}},{"RightHandTarget":(-.15,-1.75,2.55), "LeftHandTarget":(-.2,-1.25,2.55)}),
-        (32,neutral,{})],32)
+        (1, {"UpperTorso":{"r":(3,0,6)}}, guard),
+        (4, {"LowerTorso":{"r":(-5,0,10)}, "UpperTorso":{"r":(3,0,28)}}, {
+            "RightHandTarget":(1.18,-.78,1.95), "LeftHandTarget":(.70,-.72,2.08)}),
+        (7, {"HumanoidRootPart":{"l":(0,-.08,-.25)}, "LowerTorso":{"r":(5,0,-4)}, "UpperTorso":{"r":(-3,0,-20)}}, {
+            "RightHandTarget":(-1.18,-1.08,2.82), "LeftHandTarget":(-.70,-.98,2.72),
+            "LeftFootTarget":(.35,-.72,-1.0), "RightFootTarget":(-.35,-.22,-1.0)}),
+        (10, {"LowerTorso":{"r":(-4,0,-12)}, "UpperTorso":{"r":(2,0,-30)}}, {
+            "RightHandTarget":(-1.30,-.76,2.12), "LeftHandTarget":(-.78,-.72,2.18)}),
+        (13, {"HumanoidRootPart":{"l":(0,-.20,-.27)}, "LowerTorso":{"r":(7,0,7)}, "UpperTorso":{"r":(-5,0,30)}}, {
+            "RightHandTarget":(1.30,-1.18,2.62), "LeftHandTarget":(.77,-1.04,2.58),
+            "RightFootTarget":(-.35,-1.02,-1.0), "LeftFootTarget":(.35,-.20,-1.0)}),
+        (15, {"UpperTorso":{"r":(-3,0,22)}}, {
+            "RightHandTarget":(1.38,-.92,2.58), "LeftHandTarget":(.84,-.86,2.56),
+            "RightFootTarget":(-.35,-.88,-1.0)}),
+        (18, {"UpperTorso":{"r":(3,0,7)}}, guard)],18)
 
 def setup_scene(rig):
     world = bpy.context.scene.world
@@ -249,16 +281,93 @@ def setup_scene(rig):
 def render_contacts(rig):
     os.makedirs(RENDER_ROOT, exist_ok=True)
     contacts = {
-        "SwordAttack01_DownwardDiagonal": 10,
-        "SwordAttack02_RisingDiagonal": 10,
-        "SwordAttack03_ForwardThrust": 11,
-        "SwordAttack04_Whirlwind": 21,
+        "SwordAttack01_DownwardDiagonal": 6,
+        "SwordAttack02_RisingDiagonal": 6,
+        "SwordAttack03_ForwardThrust": 8,
+        "SwordAttack04_Whirlwind": 13,
     }
     for name, frame in contacts.items():
         rig.animation_data.action = bpy.data.actions[name]
         bpy.context.scene.frame_set(frame)
         bpy.context.scene.render.filepath = os.path.join(RENDER_ROOT, f"{name}_contact.png")
         bpy.ops.render.render(write_still=True)
+
+def render_animation_reviews(rig):
+    os.makedirs(ANIMATION_REVIEW_ROOT, exist_ok=True)
+    scene = bpy.context.scene
+    camera = scene.camera
+    review_frames = {
+        "SwordAttack01_DownwardDiagonal": (3, 6, 8, 11),
+        "SwordAttack02_RisingDiagonal": (3, 6, 8, 11),
+        "SwordAttack03_ForwardThrust": (5, 8, 10, 12),
+        "SwordAttack04_Whirlwind": (4, 7, 13, 18),
+    }
+    camera_positions = {
+        "front": (0, -14, 3.2),
+        "three_quarter": (8, -13, 4.8),
+    }
+    for action_name, frames in review_frames.items():
+        rig.animation_data.action = bpy.data.actions[action_name]
+        for camera_name, position in camera_positions.items():
+            camera.location = position
+            for frame in frames:
+                scene.frame_set(frame)
+                scene.render.image_settings.file_format = "PNG"
+                scene.render.filepath = os.path.join(
+                    ANIMATION_REVIEW_ROOT, f"{action_name}_{camera_name}_frame_{frame:02d}.png")
+                bpy.ops.render.render(write_still=True)
+
+        camera.location = camera_positions["three_quarter"]
+        sequence_root = os.path.join(ANIMATION_REVIEW_ROOT, action_name)
+        os.makedirs(sequence_root, exist_ok=True)
+        for frame in range(1, int(rig.animation_data.action.get("frame_end", 24)) + 1):
+            scene.frame_set(frame)
+            scene.render.image_settings.file_format = "PNG"
+            scene.render.filepath = os.path.join(sequence_root, f"frame_{frame:02d}.png")
+            bpy.ops.render.render(write_still=True)
+    scene.render.image_settings.file_format = "PNG"
+
+def object_bounds(obj):
+    points = [obj.matrix_world @ Vector(corner) for corner in obj.bound_box]
+    return (
+        tuple(min(point[axis] for point in points) for axis in range(3)),
+        tuple(max(point[axis] for point in points) for axis in range(3)),
+    )
+
+def bounds_overlap(first, second, margin=0.025):
+    first_min, first_max = object_bounds(first)
+    second_min, second_max = object_bounds(second)
+    return all(
+        first_min[axis] < second_max[axis] - margin
+        and first_max[axis] > second_min[axis] + margin
+        for axis in range(3)
+    )
+
+def validate_weapon_clearance(rig):
+    blade = bpy.data.objects["HopliteSword_Blade"]
+    body_parts = [
+        bpy.data.objects[name]
+        for name in (
+            "LowerTorso_Geo", "UpperTorso_Geo", "Head_Geo",
+            "RightUpperLeg_Geo", "RightLowerLeg_Geo",
+            "LeftUpperLeg_Geo", "LeftLowerLeg_Geo",
+        )
+    ]
+    failures = []
+    for action_name in (
+        "SwordAttack01_DownwardDiagonal", "SwordAttack02_RisingDiagonal",
+        "SwordAttack03_ForwardThrust", "SwordAttack04_Whirlwind",
+    ):
+        rig.animation_data.action = bpy.data.actions[action_name]
+        end = int(rig.animation_data.action.get("frame_end", 24))
+        for frame in range(1, end + 1):
+            bpy.context.scene.frame_set(frame)
+            bpy.context.view_layer.update()
+            intersections = [part.name for part in body_parts if bounds_overlap(blade, part)]
+            if intersections:
+                failures.append(f"{action_name} frame {frame}: {', '.join(intersections)}")
+    if failures:
+        raise RuntimeError("Sword intersects the wielder:\n" + "\n".join(failures))
 
 def export_actions(rig):
     os.makedirs(EXPORT_ROOT, exist_ok=True)
@@ -362,6 +471,8 @@ def main():
     os.makedirs(os.path.dirname(BLEND_PATH), exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=BLEND_PATH)
     render_contacts(rig)
+    render_animation_reviews(rig)
+    validate_weapon_clearance(rig)
     export_actions(rig)
     export_roblox_sequences(rig)
     bpy.ops.wm.save_as_mainfile(filepath=BLEND_PATH)
